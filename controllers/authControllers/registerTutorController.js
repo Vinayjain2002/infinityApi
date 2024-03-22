@@ -1,8 +1,8 @@
 const mongoose= require("mongoose")
 const bcrypt= require("bcryptjs")
 const jwt= require("jsonwebtoken")
-const Tutor= require("../models/Tutor")
-const {CustomError}= require("../middleWare/error")
+const Tutor= require("../../models/Tutor")
+const {CustomError}= require("../../middleWare/error")
 
 const loginTutorController= async (req,res)=>{
     let tutor;
@@ -19,16 +19,17 @@ const loginTutorController= async (req,res)=>{
     }
     //going to find out the user
     if(!tutor){
-        return new CustomError("Invalid Credentials", 401)
+        return res.status(401).json({
+            "message": "Invalid Credentials"
+        })
     }
     const match= await bcrypt.compare(req.body.password, tutor.password)
     if(!match){
-        return new CustomError("Invalid Credentials", 401)
+        return res.status(428).json({"message": "Invalid Password Credentials"})
     }
     const {password,...data}= tutor._doc;
-
     const token= h=jwt.sign({_id: tutor._id}, "vinay",{expiresIn: "3d"})
-    res.cookie("token", token, {httpOnly: true}).status(201).json({"message": "Tutor registered Successfully"})
+    res.cookie("token", token, {httpOnly: true}).status(201).json({"message": "Tutor login Successfully", data: data})
 }
 
 const registerTutorController= async(req, res)=> {
@@ -106,4 +107,49 @@ const refetchTutorController= async(req,res,next)=>{
     } 
 }
 
-module.exports= {loginTutorController,logoutTutorController, registerTutorController, refetchTutorController};
+const updateTutorProfileController= async(req, res,next)=>{
+
+}
+
+const updateTutorPhoneController= async(req, res,next)=>{
+
+}
+
+const updateTutorEmailController= async(req, res, next)=>{
+
+}
+
+const updateTutorUsernameController= async(req, res,next)=>{
+
+}
+
+const updateTutorPictureController= async(req,res,next)=>{
+
+}
+
+const aviableTutorController = async(req,res,next)=>{
+
+}
+
+const forgotTutorPassword= async(req, res,next)=>{
+
+}
+
+const resetTutorPassword= async(req,res,next)=>{
+
+}
+
+module.exports= {
+    loginTutorController,
+    logoutTutorController,
+     registerTutorController,
+     refetchTutorController,
+     aviableTutorController,
+     updateTutorProfileController,
+     updateTutorPictureController,
+     updateTutorEmailController,
+     updateTutorPhoneController,
+     updateTutorUsernameController,
+     resetTutorPassword,
+     forgotTutorPassword,
+    };

@@ -1,5 +1,5 @@
 const mongoose= require("mongoose")
-const BloggerSchema= mongoose.model({
+const bloggerSchema= new mongoose.Schema({
     username: {
         type: String,
         required: true,
@@ -115,5 +115,5 @@ const BloggerSchema= mongoose.model({
     ],
 });
 
-const Blogger= mongoose.model("Blogger", BloggerSchema);
-module.exports= Blogger;
+const Blogger= mongoose.model("Bogger", bloggerSchema)
+module.exports=Blogger;

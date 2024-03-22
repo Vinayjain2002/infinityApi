@@ -4,6 +4,9 @@ const userSchema= new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    passwordResetToken: {
+        type: String
+    },
     username: {
         type: String,
         required: true,

@@ -1,8 +1,8 @@
-const {CustomError} = require("../middleWare/error")
+const {CustomError} = require("../../middleWare/error")
 const mongoose= require("mongoose")
 const bcrypt = require('bcryptjs'); // Import bcrypt for password hashing
 const jwt= require("jsonwebtoken")
-const Blogger= require("../models/Blogger")
+const Blogger= require("../../models/Blogger")
  
 const registerBloggerController= async( req,res)=> {
       // we need to first check the email or the phone no first
@@ -111,4 +111,52 @@ const logoutBloggerController = async(req, res)=>{
     }
 }
 
-module.exports= {registerBloggerController, refetchBloggerController, loginBloggerController, logoutBloggerController}
+const updateBloggerProfileController= async (req,res,next)=>{
+    // here we are going to update the data related to the bio description, etc
+
+}
+
+const updateBloggerPhoneController = async(req,res,next)=>{
+
+}
+
+
+
+const updateBloggerEmailController= async(req, res,next)=>{
+
+}
+
+const updateBloggerPictureController = async(req, res,next)=>{
+    // here we are going to define the code for the pictures ie the profile picture and the cover pictures
+
+}
+
+const updateBloggerUsernameController= async(req, res,next)=>{
+
+}
+
+const aviableBloggerUsernames = async(req, res, next)=>{
+
+}
+
+const forgotBloggerPassword= async(req,res,next)=>{
+
+}
+
+const resetBloggerPassword = async(req,res,next)=>{
+
+}
+module.exports= {
+    registerBloggerController, 
+    refetchBloggerController, 
+    loginBloggerController,
+     logoutBloggerController,
+    updateBloggerPhoneController,
+    updateBloggerEmailController,
+     updateBloggerProfileController,
+       updateBloggerPictureController, 
+    updateBloggerUsernameController,
+    aviableBloggerUsernames,
+    forgotBloggerPassword,
+    resetBloggerPassword
+};

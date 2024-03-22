@@ -1,7 +1,8 @@
 const mongoose= require("mongoose")
 const bcrypt= require("bcryptjs")
 const jwt=  require("jsonwebtoken");
-const User= require("../models/User");
+const User= require("../../models/User");
+const Admin= require("../../models/admin")
 
 // only the delete Account Controller is left
 
@@ -9,13 +10,14 @@ const createUserAccountController = async (req, res) => {
     try {
       // Separate JWT verification
       const token = req.cookies.token;
+      console.log(token);
       if (!token) {
         throw new CustomError("Admin please login", 401); // 401 for unauthorized access
       }
   
       const decodedData = await jwt.verify(token, "vinayadmin");
       // Admin authorization
-      if (!decodedData.admin || !decodedData.admin.userAccess ) {
+      if (!decodedData.admin || !decodedData.approvedadmin || !decodedData.admin.userAccess ) {
         return res.status(403).json({ message: "You are not authorized to create users" });
       }
       const adminId = decodedData.admin._id;
@@ -115,7 +117,7 @@ const accessUserAccountController = async (req, res, next) => {
       const decodedData = await jwt.verify(token, "vinayadmin");
   
       // Admin authorization
-      if (!decodedData.admin || !decodedData.admin.userAccess) {
+      if (!decodedData.admin && !decodedData.admin.userAccess && !decodedData.admin.approvedadmin) {
         return res.status(403).json({ message: "You are not authorized to access user information" });
       }
   
@@ -151,11 +153,11 @@ async function findTargetUser(body) {
     } else {
       throw new CustomError("Admin please provide the email or the username", 400);
     }
-  }
+}
 
 module.exports= {
     createUserAccountController,
     blockUserAccountController,
     deleteUserAccountController,
-    accessUserAccountController
+    accessUserAccountController,
 };

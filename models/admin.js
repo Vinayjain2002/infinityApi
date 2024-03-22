@@ -25,7 +25,6 @@ const adminSchema= mongoose.Schema({
     },
     adminname: {
         type: String,
-        required: true,
         trim: true,
         lowercase: true
     },
@@ -40,7 +39,7 @@ const adminSchema= mongoose.Schema({
         trim: true,
         unique: true
     },
-    adminmobileNo: {
+    adminmobileno: {
         type: String,
         required: true,
         lowercase: true
@@ -53,35 +52,39 @@ const adminSchema= mongoose.Schema({
         type: Boolean,
         default: false
     },
-    bloggerAcess: {
+    bloggerAccess: {
         type: Boolean,
         default: false
     },
-    tutorAcess: {
+    tutorAccess: {
         type: Boolean,
         default: false
     },
-    blogsAcess: {
+    blogsAccess: {
         type: Boolean,
         default: false
     },
-    courseAcess: {
+    courseAccess: {
         type: Boolean,
         default: false
     },
-    hackathonsAcess: {
+    hackathonsAccess: {
         type: Boolean,
         deafult: false
     },
-    eventAcess: {
+    eventAccess: {
         type: Boolean,
         default: false
     },
-    bootcampAcess: {
+    bootcampAccess: {
         type: Boolean,
         default: false
     },
     announcementAccess: {
+        type: Boolean,
+        default: false
+    },
+    festAccess: {
         type: Boolean,
         default: false
     },

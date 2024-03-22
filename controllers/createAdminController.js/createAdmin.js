@@ -6,38 +6,39 @@ const Admin = require("../../models/admin");
 
 const createAdminController = async (req, res, next) => {
     try {
-      const { email, approvedAdmin } = req.body;
+      const { adminemail, approvedadmin } = req.body;
   
-      const existingAdmin = await Admin.findOne({ email });
+      const existingAdmin = await Admin.findOne({ adminemail });
       if (!existingAdmin) {
         return res.status(406).json({ message: "Please first apply for admin" });
       }
-  
-      if (approvedAdmin && existingAdmin.approvedAdmin) {
+      if(!approvedadmin){
+        return res.status(435).json({"message": "Please Either approve the admin or reject it"});
+      }
+      if (approvedadmin && existingAdmin.approvedadmin) {
         return res.status(409).json({ message: "You are already an approved admin" });
       }
   
-      existingAdmin.approvedAdmin = approvedAdmin || false; // Set based on request body
-  
+      existingAdmin.approvedadmin = approvedadmin; // Set based on request body
       // Access Levels (Refactored logic)
       if (req.body.userAccess) existingAdmin.userAccess = req.body.userAccess;
       if (req.body.bloggerAccess) existingAdmin.bloggerAccess = req.body.bloggerAccess;
       if (req.body.tutorAccess) existingAdmin.tutorAccess = req.body.tutorAccess;
 
-      if (req.body.blogsAcess) existingAdmin.blogsAcess = req.body.blogsAcess;
-      if (req.body.courseAcess) existingAdmin.courseAcess = req.body.courseAcess;
-      if (req.body.hackathonsAcess) existingAdmin.hackathonsAcess = req.body.hackathonsAcess;
+      if (req.body.blogsAccess) existingAdmin.blogsAccess = req.body.blogsAccess;
+      if (req.body.courseAccess) existingAdmin.courseAccess = req.body.courseAccess;
+      if (req.body.hackathonsAccess) existingAdmin.hackathonsAccess = req.body.hackathonsAccess;
 
-      if (req.body.eventAcess) existingAdmin.eventAcess = req.body.eventAcess;
-      if (req.body.bootcampAcess) existingAdmin.bootcampAcess = req.body.bootcampAcess;
-      if (req.body.announcementAcess) existingAdmin.announcementAcess = req.body.announcementAcess;
-
+      if (req.body.eventAccess) existingAdmin.eventAccess = req.body.eventAccess;
+      if (req.body.bootcampAccess) existingAdmin.bootcampAccess = req.body.bootcampAccess;
+      if (req.body.announcementAcess) existingAdmin.announcementAccess = req.body.announcementAccess;
+      if(req.body.festAccess) existingAdmin.festAccess= req.body.festAccess;
       await existingAdmin.save();
   
       // Implement notification logic in a separate function/service
       // sendNotification(existingAdmin); // Example function call
   
-      res.status(200).json({ message: "Admin successfully approved" });
+      res.status(200).json({ message: "Admin successfully approved" ,data: existingAdmin });
     } catch (err) {
       console.error(err); // Log specific error for debugging
       res.status(err.statusCode || 500).json({ message: err.message || "Internal Server Error" });
@@ -93,16 +94,17 @@ const fetchAdminsController = async (req, res, next) => {
   };
   const fetchParticularAdminController = async (req, res, next) => {
     try {
-      const { email } = req.body;
+      const { adminemail } = req.body;
   
       // Find admin by email
-      const admin = await Admin.findOne({ email });
+      const admin = await Admin.findOne({ adminemail });
       if (!admin) {
         return res.status(404).json({ message: "Admin not found" }); // Use 404 for not found
       }
+      console.log(admin);
   
       // Check approval status (if applicable)
-      if (!admin.approvedAdmin) {
+      if (!admin.approvedadmin) {
         return res.status(403).json({ message: "Unauthorized access to admin data" }); // Use 403 for forbidden access
       }
   
@@ -119,7 +121,7 @@ const fetchAdminsController = async (req, res, next) => {
 
 const AdminApplicationController= async(req, res,next)=>{
     try{
-         const adminApplication = await Admin.find({ approvedAdmin: false });
+         const adminApplication = await Admin.find({ approvedadmin: false });
 
       const responseData = adminApplication.map(admin => ({
         _id: admin._id,
