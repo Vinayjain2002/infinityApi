@@ -8,6 +8,16 @@ const TutorSchema= mongoose.Schema({
         trim: true,
         lowercase: true
     },
+    authenticated: {
+        type: Boolean,
+        default: false
+    },
+    passwordResetToken: {
+        type: String
+    },
+    otp: {
+        type: String,
+    },
     bloggerData: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Blogger"

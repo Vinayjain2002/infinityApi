@@ -7,13 +7,22 @@ const bloggerSchema= new mongoose.Schema({
         trim: true,
         lowercase: true
     },
-    bloggerData: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Blogger"
+    blocked:{
+        type: Boolean,
+        default: false
     },
-    tutorData: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tutor"
+    authenticated: {
+        type: Boolean,
+        default: false
+    },
+    passwordResetToken: {
+        type: String
+    },
+    emailChangeToken: {
+        type: String
+    },
+    otp: {
+        type: String,
     },
     name: {
         type: String,
@@ -54,18 +63,6 @@ const bloggerSchema= new mongoose.Schema({
         type:String,
         default: ""
     },
-    followers: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref:"User"
-        }
-    ],
-    following: [
-        {
-            type:mongoose.Schema.Types.ObjectId,
-            ref: "User"
-        }
-    ],
     createdAt: {
         type: Date,
         default: Date.now()

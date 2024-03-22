@@ -4,8 +4,18 @@ const userSchema= new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    authenticated: {
+        type: Boolean,
+        default: false
+    },
     passwordResetToken: {
         type: String
+    },
+    emailChangeToken: {
+        type: String
+    },
+    otp: {
+        type: String,
     },
     username: {
         type: String,
@@ -13,14 +23,6 @@ const userSchema= new mongoose.Schema({
         unique: true,
         trim: true,
         lowercase: true
-    },
-    bloggerData: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Blogger"
-    },
-    tutorData: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tutor"
     },
     name: {
         type: String,
@@ -41,7 +43,7 @@ const userSchema= new mongoose.Schema({
         type: String,
         required: true
     },
-   mobileNo: {
+         mobileNo: {
         type: String,
    },
     bio: {
