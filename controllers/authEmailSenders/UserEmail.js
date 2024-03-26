@@ -76,18 +76,20 @@ The Infinity Team
 
 async function resetUserEmail(useremail,username,link){
   try{
+    console.log(useremail,username);
     // here we are going to define the text for the sending of the email
     const senderemail= "infinetyassist@gmail.com";
     const supportemail= "infinetyhelpdesk@gmail.com";
     const senderpassword="nash qxci depr ydhl";
     const text = `Hi ${username},
-  \n
-  You requested a change to your email address. To confirm this update, click the link below:
+
+    You requested a change to your email address. To confirm this update, click the link below:
   ${link} (This link will expire in 24 hours).
+
   If you didn't request this change, simply ignore this email.
-  \n
   For your security, we recommend keeping your account information up to date.
-  \n
+  
+
   Sincerely,
   The Infinity Team 
     `;
@@ -114,8 +116,9 @@ async function loginUserNotfyEmail(useremail, username, date, time,link){
     const senderpassword="nash qxci depr ydhl";
     const text = `
   Hi ${username},
+
   Heads up! We saw a login attempt on ${date}, ${time} you might not have made. Secure your account by resetting your password: ${link}
-    \n
+
   The Infinity Team
     `;
     const subject= `Potential Access! Check Your Account`;

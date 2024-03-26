@@ -24,18 +24,23 @@ const registerUserController = async (req, res) => {
         } 
         // Adjust based on security requirements (higher for more security)
         // here we are going to define a token
-        const passwordtoken = jwt.sign({ _id: user._id },"vinayResetPassword", { expiresIn: "1d" }); // Use env variable for secret
-        const passwordResetEmail= await passwordsetEmail(username,email,"www.google.com");
-        if(!passwordResetEmail){
-          return res.status(436).json({"message": "Unable to verify Email"})
-        }
         // here we create a temporary password for the user and we need to create a token and email so that user could change the email
         const hashedPassword = await bcrypt.hash(username, saltRounds);
+        console.log(hashedPassword);
         const newUser = new User({
             ...req.body,// Store the hashed password
             password: hashedPassword,
         });
-        newUser.save();
+        console.log(newUser);
+        await newUser.save();
+        const passwordtoken = jwt.sign({ _id: newUser._id },"vinayResetPassword", { expiresIn: "1d" }); // Use env variable for secret
+        newUser.passwordResetToken= passwordtoken;
+        console.log(passwordtoken)
+        await newUser.save();
+        const passwordResetEmail= await passwordsetEmail(username,email,"www.google.com");
+        if(!passwordResetEmail){
+          return res.status(436).json({"message": "Unable to verify Email"})
+        }
         // going to define the cookies for the again auto logging
         const usertoken= jwt.sign({_id: newUser._id},"vinay", {expiresIn: "3d"});
         res.cookie("usertoken", usertoken, {httpOnly: true}).status(201).json({"message": "User registered Successfully"})
@@ -144,7 +149,7 @@ const loginUserController = async (req, res) => {
             "message": "Your Account is blocked"
           })
         }
-        const {password,...data}= user._doc;
+        const {password, passwordResetToken,emailChangeToken,...data}= user._doc;
         res.status(200).json(data);
       } catch (err) {
         console.error("Error verifying token or fetching user:", err); // Log specific error details for debugging
@@ -243,10 +248,23 @@ const loginUserController = async (req, res) => {
   const updateUserEmailGenerator= async(req, res,next)=>{
       // here we are going to send the verification email to the user with the otp
       try {
+        const usertoken= req.cookies.usertoken;
+        if(!usertoken){
+          return res.status(429).json({"message":"Token not found"})
+        }
+        console.log(usertoken, req,res);
         // Check for token presence
-       const loggedInUser= await findLoggedInUser();
-       if(loggedInUser){
+       const loggedInUser= await findLoggedInUser(usertoken);
+        if(loggedInUser.blocked){
+        return res.status(405).json({
+         "message": "Your Account is blocked"
+        });
+       }
+       else if(loggedInUser){
         const {email}= req.body;
+        if(!email){
+          return res.status(409).json({"message": "Please Enter the new user email"})
+        }
           // here we are going to check is the usr email is just same or different 
           if(email==loggedInUser.email){
             return res.status(409).json({
@@ -258,6 +276,7 @@ const loginUserController = async (req, res) => {
           const emailtoken = jwt.sign({ _id:loggedInUser._id },"vinayResetEmail", { expiresIn: "1d" }); // Use env variable for secret
           loggedInUser.emailChangeToken= emailtoken;
           await loggedInUser.save();
+          console.log(loggedInUser);
           // going to send the email to the user for the email reset. url contains username, newEmail, token
           const resetEmail= await resetUserEmail(email,loggedInUser.username,"www.google.com");
           if(resetEmail){
@@ -268,7 +287,7 @@ const loginUserController = async (req, res) => {
           }
        }
        else{
-        return;
+        return res.status(409).json({"message": "Internal Server Error, login again"});
        }
       } catch (err) {
         console.error("Unhandled error in refetchUserController:", err);
@@ -280,14 +299,14 @@ const loginUserController = async (req, res) => {
     // here we will be going to update the user email
     try {
       // Check for token presence
-      const { email, emailtoken}= req.body;
-      if (!emailtoken) {
+      const { email, emailChangeToken}= req.body;
+      if (!emailChangeToken) {
         return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
       }
   
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(emailtoken, "vinayResetEmail"); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(emailChangeToken, "vinayResetEmail"); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
   
         // Fetch user data using findOne()
@@ -333,16 +352,31 @@ const loginUserController = async (req, res) => {
   const updateUserUsernamesController= async(req,res,next)=>{
     try {
       // Check for token presence
-      const loggedInuser= await findLoggedInUser();
-      if(loggedInUser){
+      const usertoken= req.cookies.usertoken;
+      if(!usertoken){
+        return res.status(408).json({
+          "message": "Please login"
+        });
+      }
+      const loggedInUser= await findLoggedInUser(usertoken);
+      if(loggedInUser.blocked){
+        return res.status(429).json({"message": "Your account is blocked"})
+      }
+      else if(loggedInUser){
         const {username}= req.body;
+        if(!username){
+          return res.status(490).json({
+            "message": "Please provide the new username"
+          })
+        }
+        console.log(username);
         // here we are going to check weather the username is aviable or not
-        const existingUser= User.findOne({username});
+        const existingUser= User.findOne({username: username});
         if(existingUser){
           return res.status(493).json({"message": "Username Already Exists"});
         }
-        user.username= username;
-        user.save();
+        loggedInUser.username= username;
+        loggedInUser.save();
         res.status(200).json({"message": "Username Updated Succesfully"});
       }else{
         return;
@@ -358,7 +392,6 @@ const loginUserController = async (req, res) => {
  try {
   // 1. Validate User Input
   const { email, username } = req.body;
-
   if (!email && !username) {
     return res.status(429).json({ error: "Please provide either email or username." });
   }
@@ -396,14 +429,14 @@ console.log(user);
   const updateUserPasswordController=async(req, res,next)=>{
     try {
       // Check for token presence
-      const {password, passwordtoken}= req.body;
-      if (!passwordtoken) {
+      const {password, passwordResetToken}= req.body;
+      if (!passwordResetToken) {
         return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
       }
   
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(passwordtoken, "vinayResetPassword"); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(passwordResetToken, "vinayResetPassword"); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
   
         // Fetch user data using findOne()
@@ -417,7 +450,10 @@ console.log(user);
           })
         }
         // so we had verified the newemail
-        user.password= password;
+        const saltRounds=10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        user.password= hashedPassword;
         user.passwordResetToken="";
         user.save();
         return res.status(200).json("Password Updated Successfully")
@@ -440,99 +476,121 @@ console.log(user);
 
   const followUserController = async (req, res, next) => {
     try {
-      const loggedInUser = await findLoggedInUser();
-  
-      if (!loggedInUser) {
-        // User not logged in, return appropriate error
-        return res.status(401).json({ message: "Unauthorized" });
+      const usertoken = req.cookies.usertoken;
+      if (!usertoken) {
+        return res.status(405).json({ message: "Please First login in your account" });
       }
-  
-      const {userId } = req.body;
-  
+      let loggedInUser;
+      try {
+        loggedInUser = await findLoggedInUser(usertoken);
+        if (!loggedInUser) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
+        if (loggedInUser.blocked) {
+          return res.status(480).json({ message: "Your Account is blocked" });
+        }
+      } catch (err) {
+        console.error("Error finding logged in user:", err);
+        return res.status(500).json({ message: "Internal Server Error" });
+      }
+
+      const { userId } = req.body;
+
       if (!userId) {
-        // Missing user ID to follow, return appropriate error
         return res.status(400).json({ message: "Missing user ID to follow" });
       }
-  
-      // Find the user to follow
+
       const userToFollow = await User.findOne({ _id: userId });
-  
       if (!userToFollow) {
-        // User to follow not found, return appropriate error
         return res.status(404).json({ message: "User not found" });
       }
-  
-      // Check if already following
-      if (loggedInUser.followers.some(follower => follower._id.toString() === userId.toString())) {
-        return res.status(400).json({ message: "Already included in the followers" });
+
+      if (loggedInUser.following.includes(userId)) {
+        return res.status(400).json({ message: "Already included in the following list" });
       }
-  
-      // Check if blocked
-      if (loggedInUser.blockedList.some(blocked => blocked._id.toString() === userId.toString())) {
+
+      if (loggedInUser.blockedList.includes(userId)) {
         return res.status(415).json({ message: "Unblock user first" });
       }
-  
-      // Add user to followers list
-      loggedInUser.following.push(userToFollow);
-  
-      // Update logged-in user data (replace with your update function)
+
+      // Add user to following list
+      loggedInUser.following.push(userId);
+      userToFollow.followers.push(loggedInUser._id);
+      // Update logged-in user data
       await User.findOneAndUpdate(
-        { _id: ObjectId(loggedInUser._id) },
-        loggedInUser,
+        { _id: loggedInUser._id },
+        { following: loggedInUser.following },
         { new: true } // Return the updated document
       );
-  
+      await User.findOneAndUpdate(
+        {_id: userToFollow._id},
+        {followers: userToFollow.followers},
+        {new: true}
+      );
       res.status(200).json({ message: "Successfully followed the user" });
     } catch (err) {
       console.error("Unhandled error in followUserController:", err);
-      res.status(500).json({ message: "Internal Server Error" }); // Generic error for unexpected issues at top level
+      res.status(500).json({ message: "Internal Server Error" });
     }
   };
-  
+
 
   const unfollowUserController = async (req, res, next) => {
     try {
-      const loggedInUser = await findLoggedInUser();
-  
+      const usertoken= req.cookies.usertoken;
+      if (!usertoken) {
+        return res.status(405).json({ message: "Please First login in your account" });
+      }
+      const loggedInUser = await findLoggedInUser(usertoken);
       if (!loggedInUser) {
-        // User not logged in, return appropriate error
         return res.status(401).json({ message: "Unauthorized" });
       }
-  
-      const userIdToUnfollow = req.params.userId; // Replace with logic to get the user ID to unfollow (e.g., from URL parameter)
-  
-      if (!userIdToUnfollow) {
-        // Missing user ID to unfollow, return appropriate error
+      if (loggedInUser.blocked) {
+        return res.status(480).json({ message: "Your Account is blocked" });
+      }
+      const {userId} = req.body;
+      if (!userId) {
         return res.status(400).json({ message: "Missing user ID to unfollow" });
       }
-  
-      // Update loggedInUser's followers list to remove the userToUnfollow
-      const updatedFollowers = loggedInUser.following.filter(
-        (follower) => follower._id.toString() !== userIdToUnfollow
+      const unfollowUser= await User.findOne({_id: userId});
+      if(!unfollowUser){
+        return res.status(408).json({
+          "message": "Unfollow user does not exists"
+        });
+      }
+      // Update loggedInUser's following list to remove the userToUnfollow
+      const updatedFollowing = loggedInUser.following.filter(
+        (followedUser) => followedUser.toString() !== userId
       );
-  
-      loggedInUser.following = updatedFollowers;
-  
-      // Update loggedInUser in the database (replace with your update function)
-      await User.findOneAndUpdate(
-        { _id: ObjectId(loggedInUser._id) },
-        loggedInUser,
-        { new: true } // Return the updated document
-      );  
-      res.status(200).json({ message: "User unfollowed successfully" }); // Success response
+      
+      loggedInUser.following = updatedFollowing;
+      
+      const updatedFollowers= unfollowUser.followers.filter(
+        (unfollow)=> unfollow.toString() === loggedInUser._id
+      );
+        unfollowUser.followers= updatedFollowers;
+      // Update loggedInUser in the database
+        await loggedInUser.save();
+       await  unfollowUser.save();
+      res.status(200).json({ message: "User unfollowed successfully" });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Internal server error" }); // Generic error message
+      console.error("Error in unfollowUserController:", err);
+      res.status(500).json({ message: "Internal server error" });
     }
   };
-  
+
   const blockUserController = async (req, res, next) => {
     try {
-      const loggedInUser = await findLoggedInUser();
-  
+      const usertoken = req.cookies.usertoken;
+      if (!usertoken) {
+        return res.status(409).json({ message: "Please First Login" });
+      }
+      const loggedInUser = await findLoggedInUser(usertoken);
       if (!loggedInUser) {
-        // User not logged in, return appropriate error
         return res.status(401).json({ message: "Unauthorized" });
+      }
+      if (loggedInUser.blocked) {
+        return res.status(480).json({ message: "Your Account is blocked" });
       }
   
       const { userId } = req.body;
@@ -541,55 +599,56 @@ console.log(user);
         return res.status(400).json({ message: "Missing user ID to block" });
       }
   
-      // Find the user to block
       const userToBlock = await User.findOne({ _id: userId });
   
       if (!userToBlock) {
-        // User to block not found, return appropriate error
         return res.status(404).json({ message: "User not found" });
       }
   
-      // Check if already blocked
-      if (loggedInUser.blockedList.some(blocked => blocked._id.toString() === userIdToBlock.toString())) {
+      if (loggedInUser.blockedList.some(blocked => blocked._id.toString() === userId.toString())) {
         return res.status(400).json({ message: "User already blocked" });
       }
   
-      // Update logged-in user data (followers and blocked list)
       loggedInUser.followers = loggedInUser.followers.filter(
-        (follower) => follower._id.toString() !== userIdToBlock.toString()
+        (follower) => follower._id.toString() !== userId.toString()
       );
-      loggedInUser.blockedList.push(userToBlock);
+      loggedInUser.following= loggedInUser.following.filter(
+        (following)=> following._id.toString() !==userId.toString()
+      );
+      loggedInUser.blockedList.push(userToBlock._id);
   
-      // Update userToBlock data (optional: remove from following list)
       userToBlock.following = userToBlock.following.filter(
         (following) => following._id.toString() !== loggedInUser._id.toString()
       );
-      // Update both users' data (replace with your update function)
-       await User.findOneAndUpdate(
-        { _id: ObjectId(loggedInUser._id) },
+      
+      userToBlock.followers= userToBlock.followers.filter(
+        (followers)=> followers._id.toString()!== loggedInUser._id.toString()
+      );
+      await User.findOneAndUpdate(
+        { _id: loggedInUser._id },
         loggedInUser,
-        { new: true } // Return the updated document
+        { new: true }
       );
 
-       await User.findOneAndUpdate(
-        {_id: ObjectId(userToBlock._id)},
+      await User.findOneAndUpdate(
+        { _id: userToBlock._id },
         userToBlock,
-        {new: true}
+        { new: true }
       );
+
       res.status(200).json({ message: "User blocked successfully" });
     } catch (err) {
       console.error("Unhandled error in blockUserController:", err);
-      res.status(500).json({ message: "Internal Server Error" }); // Generic error for unexpected issues at top level
+      res.status(500).json({ message: "Internal Server Error" });
     }
   };
-  
+
 
   //todo we could add the functionality to send the reset password to the users phone no
 
-  const findLoggedInUser= async(req,res,next)=>{
-    const usertoken = req.cookies.usertoken;
+  const findLoggedInUser= async(usertoken)=>{
+    console.log(usertoken);
       if (!usertoken) {
-         res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
          return null;
       }
       // Validate token using JWT verify
@@ -600,14 +659,7 @@ console.log(user);
         // Fetch user data using findOne()
         const user = await User.findOne({ _id: userId });
         if (!user) {
-           res.status(404).json({ message: "User not found" }); // Use 404 for not found
            return null;
-        }
-        else if(user.blocked){
-           res.status(405).json({
-            "message": "Your Account is blocked"
-          });
-          return null;
         }
         return user;
       } catch (err) {
@@ -648,3 +700,4 @@ console.log(user);
       unfollowUserController,
     blockUserController
     };
+    
