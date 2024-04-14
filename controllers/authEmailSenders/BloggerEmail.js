@@ -51,12 +51,12 @@ Team Infinity
 
 
 
-async function BloggerWelcome(bloggername, bloggeremail){
+async function BloggerWelcome(bloggername, bloggeremail,linktoplaystore){
     try{
       // here we are going to define the text for the sending of the email
       const senderemail= "infinetyassist@gmail.com";
       const supportemail= "infinetyguidance@gmail.com";
-      const senderpassword="";
+      const senderpassword="nash qxci depr ydhl";
       const text = `
       Dear ${bloggername},
         \n
@@ -70,7 +70,7 @@ async function BloggerWelcome(bloggername, bloggeremail){
 The Infinity Team
   `;
   const subject= `Welcome to Infinity - Your Blogging Journey Begins Here!`;
-  const result= await sendEmail(senderemail,senderpassword, bloggeremail,subject,text );
+  const result= await sendEmail(senderemail,senderpassword,bloggeremail,subject,text );
       if(result){
         console.log("Successfully send the email to the admin")
         return true;
@@ -81,6 +81,7 @@ The Infinity Team
       }
       } 
       catch(err){
+        console.log(err)
         console.log("Error while creating the email");
         return false;
       }

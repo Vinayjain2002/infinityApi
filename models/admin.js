@@ -1,10 +1,21 @@
 const mongoose= require("mongoose")
 
 const adminSchema= mongoose.Schema({
+    accessAppliedFor: [
+        {
+            type: String
+        }
+    ],
     adminProfilePicture: {
         type: String
     },
     adminCoverPictre: {
+        type: String
+    },
+    adminPasswordToken: {
+        type: String
+    },
+    adminMobileToken: {
         type: String
     },
     adminBio: {
@@ -40,13 +51,12 @@ const adminSchema= mongoose.Schema({
         unique: true
     },
     adminmobileno: {
-        type: String,
+        type: Number,
         required: true,
         lowercase: true
     },
     adminpassword: {
         type:String,
-        required: true
     },
     userAccess: {
         type: Boolean,
@@ -94,7 +104,7 @@ const adminSchema= mongoose.Schema({
             ref: "User"
         }
     ],
-    createrdUser: [
+    createdUser: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User"

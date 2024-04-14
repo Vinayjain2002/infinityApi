@@ -11,6 +11,11 @@ const userSchema= new mongoose.Schema({
     passwordResetToken: {
         type: String
     },
+    speciality:[
+        {
+            type: String
+        }
+    ],
     emailChangeToken: {
         type: String
     },
@@ -20,7 +25,6 @@ const userSchema= new mongoose.Schema({
     username: {
         type: String,
         required: true,
-        unique: true,
         trim: true,
         lowercase: true
     },
@@ -160,6 +164,24 @@ const userSchema= new mongoose.Schema({
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Hackathons"
+        }
+    ],
+    festPosted: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Fest"
+        }
+    ],
+    bootCampPosted: [
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref: "Bootcamp"
+        }
+    ],
+    hackathonsPosted: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "PostHackathon"
         }
     ]
 });

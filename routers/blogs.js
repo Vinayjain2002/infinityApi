@@ -1,6 +1,5 @@
 const express= require("express")
 const { getTopicBlogsController, bloggerBlogsController, editBlogsController, createBlogsController, relatedBlogsController, getBlogsController, deleteBlogsController } = require("../controllers/blogsController/blogs")
-const { models } = require("mongoose")
 const router= express.Router()
 
 // module.exports= router.get("/blogs/:topic/:length",getTopicBlogsController)

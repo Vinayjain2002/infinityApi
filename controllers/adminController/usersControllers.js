@@ -2,30 +2,35 @@ const mongoose= require("mongoose")
 const bcrypt= require("bcryptjs")
 const jwt=  require("jsonwebtoken");
 const User= require("../../models/User");
-const Admin= require("../../models/admin")
+const Admin= require("../../models/admin");
+const { passwordsetEmail } = require("../authEmailSenders/forgotPasswordEmailSender");
+const { welcomeUserEmail } = require("../authEmailSenders/UserEmail");
 
 // only the delete Account Controller is left
 
 const createUserAccountController = async (req, res) => {
     try {
       // Separate JWT verification
-      const token = req.cookies.token;
-      console.log(token);
-      if (!token) {
+      const adminToken = req.cookies.adminToken;
+      if (!adminToken) {
         throw new CustomError("Admin please login", 401); // 401 for unauthorized access
       }
   
-      const decodedData = await jwt.verify(token, "vinayadmin");
-      // Admin authorization
-      if (!decodedData.admin || !decodedData.approvedadmin || !decodedData.admin.userAccess ) {
-        return res.status(403).json({ message: "You are not authorized to create users" });
+      const decodedData = await jwt.verify(adminToken, "vinayAdmin");
+      const admin= Admin.findOne({_id: decodedData._id})
+      if(!admin){
+        return res.status(409).json({
+          "message": "Admin not found"
+        })
       }
-      const adminId = decodedData.admin._id;
-  
+      // Admin authorization
+      if (!admin.approvedadmin || !admin.userAccess ) {
+        return res.status(403).json({ message: "You are not authorized to create users" });
+      }  
       // Validate and hash password
-      const { password, username, email } = req.body;
-      if (!password || !username || !email) {
-        throw new CustomError("Please provide all required fields (username, email, password)", 400);
+      const {username, email } = req.body;
+      if ( !username || !email) {
+        return res.status(409).json({"message": "Please provide the email and the password"})
       }
   
       const existingUser = await User.findOne({ $or: [{ username }, { email }] });
@@ -33,8 +38,8 @@ const createUserAccountController = async (req, res) => {
         return res.status(409).json({ message: "Username or email already exists" }); // Use 409 for conflict
       }
       const saltRounds = 10; // Adjust based on security requirements (higher for more security)
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-  
+      const hashedPassword = await bcrypt.hash(username, saltRounds);
+
       // Create new user
       const newUser = new User({
         username,
@@ -43,10 +48,24 @@ const createUserAccountController = async (req, res) => {
         ...req.body
         // blocked: false by default (unless intended for specific scenarios)
       });
-     decodedData.admin.createrdUser.push(newUser._id)
-    await decodedData.admin.save();
+     admin.createdUser.push(newUser._id)
+      await admin.save();
       await newUser.save(); // Assuming User model has a save() method
-  
+      const passwordtoken = jwt.sign({ _id: newUser._id },"vinayResetPassword", { expiresIn: "1d" }); // Use env variable for secret
+      newUser.passwordResetToken= passwordtoken;
+      console.log(passwordtoken);
+      await newUser.save();
+      const passwordResetEmail= await passwordsetEmail(username,email,"www.google.com");
+      if(!passwordResetEmail){
+        return res.status(436).json({"message": "Unable to verify Email"})
+      }
+      const welcomeuser= await welcomeUserEmail(email,username, "www.google.com");
+        if(welcomeuser){
+          console.log("welcome mail send to the user")
+        }
+        else{
+          console.log("welcome mail not send");
+        }
       res.status(201).json({ message: "User registered Successfully" });
     } catch (err) {
       console.error(err); // Log specific error for debugging
@@ -57,23 +76,25 @@ const createUserAccountController = async (req, res) => {
     const blockUserAccountController = async (req, res, next) => {
         try {
           // Separate JWT verification
-          const token = req.cookies.token;
-          if (!token) {
+          const adminToken = req.cookies.adminToken;
+          if (!adminToken) {
             throw new CustomError("Admin please login", 401); // 401 for unauthorized access
           }
       
-          const decodedData = await jwt.verify(token, "vinayadmin");
-      
+          const decodedData = await jwt.verify(adminToken, "vinayAdmin");
+          const admin= Admin.findOne({_id: decodedData._id});
+          if(!admin){
+            return res.status(409).json({"message": "Admin not found"})
+          }
           // Admin authorization
-          if (!decodedData.admin || !decodedData.admin.userAccess) {
+          if (!admin.userAccess && !admin.approvedadmin ) {
             return res.status(403).json({ message: "You are not authorized to block users" });
           }
       
-          const adminId = decodedData.admin._id;
+          const adminId = decodedData._id;
       
           // Find admin and user
-          const [admin, user] = await Promise.all([
-            Admin.findOne({ _id: adminId }),
+          const [ user] = await Promise.all([
             findTargetUser(req.body), // Helper function for user search
           ]);
       

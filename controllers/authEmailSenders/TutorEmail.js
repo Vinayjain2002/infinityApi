@@ -1,11 +1,43 @@
 const nodemailer= require("nodemailer");
 
+async function resetTutorEmail(useremail,username,link){
+  try{
+    // here we are going to define the text for the sending of the email
+    const senderemail= "infinetyassist@gmail.com";
+    const supportemail= "infinetyhelpdesk@gmail.com";
+    const senderpassword="nash qxci depr ydhl";
+    const text = `Hi ${username},
+  \n
+  You requested a change to your email address. To confirm this update, click the link below:
+  ${link} (This link will expire in 24 hours).
+  If you didn't request this change, simply ignore this email.
+  \n
+  For your security, we recommend keeping your account information up to date.
+  \n
+  Sincerely,
+  The Infinity Team 
+    `;
+    const subject= `Update Your Email Address.`;
+    const result= await sendEmail(senderemail,senderpassword, useremail,subject,text );
+    if(result){
+      console.log("Successfully send the email.")
+      return true;
+    }
+    else{
+      console.log("email not send.")
+    }
+    } 
+    catch(err){
+      console.log
+      console.log("Error while creating the email");
+    }
+}
 async function TutorWelcome(tutorname,tutoremail){
     try{
       // here we are going to define the text for the sending of the email
       const senderemail= "infinetyassist@gmail.com";
       const supportemail= "infinetyguidance@gmail.com";
-      const senderpassword="";
+      const senderpassword="nash qxci depr ydhl";
       const text = `
 Dear ${tutorname},
         \n\n
@@ -60,6 +92,33 @@ Thank you for choosing to be a part of Infinity. We look forward to a successful
   }
 
 
+  async function loginTutorNotfyEmail(useremail, username, date, time,link){
+    try{
+      // here we are going to define the text for the sending of the email
+      const senderemail= "infinetyassist@gmail.com";
+      const supportemail= "infinetyhelpdesk@gmail.com";
+      const senderpassword="nash qxci depr ydhl";
+      const text = `
+    Hi ${username},
+    Heads up! We saw a login attempt on ${date}, ${time} you might not have made. Secure your account by resetting your password: ${link}
+      \n
+    The Infinity Team
+      `;
+      const subject= `Potential Access! Check Your Account`;
+      const result= await sendEmail(senderemail,senderpassword, useremail,subject,text );
+      if(result){
+        console.log("Successfully send the email.")
+        return true;
+      }
+      else{
+        console.log("email not send.")
+      }
+      } 
+      catch(err){
+        console.log
+        console.log("Error while creating the email");
+      }
+  }
 
 async function sendEmail(senderemail, senderpassword, useremail, subject, text) {
     try {
@@ -85,4 +144,4 @@ async function sendEmail(senderemail, senderpassword, useremail, subject, text) 
     }
   }
 
-  module.exports= {TutorWelcome};
+  module.exports= {TutorWelcome,loginTutorNotfyEmail, resetTutorEmail};

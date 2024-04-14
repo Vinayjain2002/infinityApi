@@ -16,7 +16,8 @@ const blogSchema= new mongoose.Schema({
     ],
     level: {
         type: String,
-        default: "Medium"
+        default: "Medium",
+        required: true
     },
     tags: {
         type: [String],
@@ -24,7 +25,7 @@ const blogSchema= new mongoose.Schema({
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Creator"
+        ref: "Blogger"
     },
     createdAt: {
         type: Date,
@@ -34,3 +35,5 @@ const blogSchema= new mongoose.Schema({
 
 const Blog= new mongoose.model("Blog", blogSchema);
 module.exports= Blog;
+
+// we are going to create a blog for the user

@@ -15,6 +15,9 @@ const TutorSchema= mongoose.Schema({
     passwordResetToken: {
         type: String
     },
+    emailChangeToken: {
+        type: String
+    },
     otp: {
         type: String,
     },

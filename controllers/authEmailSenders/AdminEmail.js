@@ -6,7 +6,7 @@ async function sendAdminApllicationEmail(adminname, adminemail,link){
           // here we are going to define the text for the sending of the email
           const senderemail= "infinetyassist@gmail.com";
           const supportemail= "infinetycare@gmail.com";
-          const senderpassword="";
+          const senderpassword="nash qxci depr ydhl";
           const text = `
   Dear ${adminname},
           \n
@@ -71,7 +71,33 @@ The Infinity Team
 
 }
 
-  
+async function loginAdminNotfyEmail(useremail, username, date, time,link){
+  try{
+        // here we are going to define the text for the sending of the email
+    const senderemail= "infinetyassist@gmail.com";
+    const supportemail= "infinetycare@gmail.com";
+    const senderpassword="nash qxci depr ydhl";
+    const text = `
+  Hi ${username},
+  Heads up! We saw a login attempt on ${date}, ${time} you might not have made. Secure your account by resetting your password: ${link}
+    \n
+  The Infinity Team
+    `;
+    const subject= `Potential Access! Check Your Account`;
+    const result= await sendEmail(senderemail,senderpassword, useremail,subject,text );
+    if(result){
+      console.log("Successfully send the email.")
+      return true;
+    }
+    else{
+      console.log("email not send.")
+    }
+    } 
+    catch(err){
+      console.log
+      console.log("Error while creating the email");
+    }
+} 
 async function sendEmail(senderemail, senderpassword, useremail, subject, text) {
     try {
         const transporter = nodemailer.createTransport({
@@ -96,4 +122,4 @@ async function sendEmail(senderemail, senderpassword, useremail, subject, text) 
     }
   }
 
-  module.exports={sendAdminApllicationEmail, approvedAsAdmin};
+  module.exports={sendAdminApllicationEmail, approvedAsAdmin, loginAdminNotfyEmail};

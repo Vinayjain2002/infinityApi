@@ -110,6 +110,23 @@ const bloggerSchema= new mongoose.Schema({
             default: [],   
         }
     ],
+    festsPosted: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Fest"
+        }
+    ],
+    hackathonsPosted: [
+        {
+            type: String
+        }
+    ],
+    bootCampPosted: [
+        {
+            type:mongoose.Schema.Types.ObjectId,
+            ref: "BootCamp"
+        }
+    ]
 });
 
 const Blogger= mongoose.model("Bogger", bloggerSchema)

@@ -4,10 +4,31 @@ const bcrypt= require("bcryptjs");
 const Admin = require("../../models/admin");
 
 
+// api testing is left
 const createAdminController = async (req, res, next) => {
     try {
+      const adminToken= req.cookies.adminToken;
+      if(!adminToken){
+        return res.status(410).json({"message": "Admin Please login"});
+      }
+      console.log(adminToken)
+      console.log("going to decode the user")
+      let decoded=jwt.verify(adminToken, "vinayAdmin");
+      console.log("token", decoded);
+      const adminId= decoded._id;
+      const admin= Admin.findOne({_id: adminId})
+      if(!admin){
+        return res.status(404).json({ message: "Admin not found" }); // Use 404 for not found
+      }
+      else if(!admin.approvedadmin){
+        return res.status(410).json({"message": "You are not  approved as admin"})
+      }
+      else if(!admin.createOtherAdmin){
+        return res.status(411).json({
+          "message": "You are not allowed to create other admins"
+        })
+      }
       const { adminemail, approvedadmin } = req.body;
-  
       const existingAdmin = await Admin.findOne({ adminemail });
       if (!existingAdmin) {
         return res.status(406).json({ message: "Please first apply for admin" });

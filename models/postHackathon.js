@@ -2,8 +2,7 @@ const mongoose= require("mongoose")
 
 const HackathonSchema = new mongoose.Schema({
     postedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: String,
         required: true
     },
     name: {
@@ -12,6 +11,7 @@ const HackathonSchema = new mongoose.Schema({
     },
     organisedBy: {
         type: String,
+        require: true
     },
     AppliedBy: {
         type: Number,
@@ -22,7 +22,6 @@ const HackathonSchema = new mongoose.Schema({
     },
     location: {
         type: String,
-        required: true
     },
     level: {
         type: String,
@@ -38,15 +37,12 @@ const HackathonSchema = new mongoose.Schema({
     },
     venue: {
         type: String,
-        required: true
     },
-    deadline: {
-        type: Date,
-        required: true
-    },
+
     dateOfPosting: {
         type: Date,
-        required: true
+        required: true,
+        default: Date.now()
     },
     ideaSubmissionDate: {
         type: Date,
@@ -84,7 +80,12 @@ const HackathonSchema = new mongoose.Schema({
     },
     mode: {
         type: String,
+        required: true,
         enum: ["online", "offline"]
+    },
+    lastDateToApply: {
+        type:Date,
+        required: true
     },
     techStackRequired: {
         type: [String]        
@@ -95,8 +96,12 @@ const HackathonSchema = new mongoose.Schema({
         }
     ],
     description: {
-
+        required: true,
         type: String
+    },
+    registerationUrl: {
+        type: String,
+        required: true
     }
   
 },{timestamps: true});
