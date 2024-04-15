@@ -5,7 +5,7 @@ const Fest= require("../../models/Fest");
 const User = require('../../models/User');
 const Blogger= require("../../models/Blogger");
 
-const PostFest= async()=>{
+const postFestController= async()=>{
     try{
         const {postedBy,designation,eventname, mode, lastDateToApply, description,queryContacts, registerationUrl, ...data}= req.body;
         const EventPoster="";
@@ -55,7 +55,7 @@ const PostFest= async()=>{
                 // now we need to add the Fest to the user Endpoints also
                 user.festPosted.push(newFest._id); // Push directly to existing array
                 await user.save();
-                res.json({ message: "Fest added successfully!" });
+                return res.json({ message: "Fest added successfully!" });
               }  
               catch(err){
                 console.log(err);
@@ -109,15 +109,16 @@ const PostFest= async()=>{
     }
     catch(err){
         console.log(err);
+        return res.status(500).json({"message": "Internal Server Error"})
     }
 }
 
-const getAllFests = async () => {
+const getAllFestsController = async () => {
     try {
       // Fetch all fests (consider filtering and sorting if needed)
       const allFests = await Fest.find({});
   
-      if (!allFests || allFests.length === 0) {
+      if (!allFests && allFests.length === 0) {
         return res.status(204).json({ message: "No fests found" });
       }
   
@@ -128,7 +129,7 @@ const getAllFests = async () => {
     }
   };
   
-const getFestsByLocation = async () => {
+const getFestsByLocationController = async () => {
     try {
       const { location } = req.body;
   
@@ -152,7 +153,7 @@ const getFestsByLocation = async () => {
   };
   
 
-const getFestsByDate = async () => {
+const getFestsByDateController = async () => {
     try {
       const { dateOfPosting, lastDateToApply, both } = req.body;
   
@@ -188,7 +189,7 @@ const getFestsByDate = async () => {
     }
   };
   
-const getUserPreferenceFests = async () => {
+const getUserPreferenceFestsController = async () => {
     try {
       const { city, entryFee, lastDateToApply, organisedUnder, organiser } = req.body;
   
@@ -225,7 +226,7 @@ const getUserPreferenceFests = async () => {
     }
   };
 
-const getFestById = async () => {
+const getFestByIdController = async () => {
     try {
       const { id } = req.body;
   
@@ -248,5 +249,115 @@ const getFestById = async () => {
     }
   };
   
+  const deleteFestController= async()=>{
+    try{
+      // going to delete the Project Details
+      const {festId}= req.params; // send the data in the form of the Bootcamp id
+      if(!festId){
+        return res.status(401).json({"message": "Fest Id is missing"})
+      }
+      // we are going to change the Project Details
+      const usertoken= req.cookies.usertoken;
+      if(!usertoken){
+          return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
+      }
+      const decoded= jwt.verify(usertoken, "vinay");
+      const userId= decoded._id;
+              // now we are going to find out the details of teh user here extra like is he a valid user or not
+      const user= User.findById(userId);
+      if(!user){
+                  // so the user id not found
+          return res.status(404).json({ message: "User not found" }); // Use 404 for not found
+      }
+      else if(user.blocked){
+                  // so the user is blocked so he is uable to post a event
+          return res.status(405).json({
+              "message": "Your Account is blocked"
+              });
+      }
+  const userFests = user.festPosted || [];
+  const festIndex = userFests.findIndex((fest) => fest.toString() === festId); // Find project index
 
-module.exports= {PostFest,getAllFests,getFestById,getFestsByDate, getFestsByLocation,getUserPreferenceFests };
+    if (festIndex === -1) {
+      return res.status(404).json({ message: "Fest not found in your Fests" });
+    }
+
+    // 6. Delete Project (Core Functionality)
+    const deletedFest = await Fest.findByIdAndDelete(festId); // Assuming `YourModel` represents the project collection
+
+    if (!deletedFest) {
+      return res.status(500).json({ message: "Failed to delete Fest" });
+    }
+
+    // 7. Update User's Projects (Efficient Update with Pull Operator)
+    const updatedUser = await User.findByIdAndUpdate(userId, { $pull: { festPosted: festId} }, { new: true }); // Efficient update with `pull`
+    if (!updatedUser) {
+      return res.status(500).json({ message: "Failed to remove fest from your posted Fests" });
+    }
+    return res.status(200).json({ message: "Fest deleted successfully" });
+  }
+  catch(err){
+      return res.status(500).json({"message": "Internal Server Error"});
+  }
+  }
+
+  const updateFestController= async(req,res,next)=>{
+    try{
+      // going to delete the Project Details
+      const {festId}= req.params;
+      if(!festId){
+          return res.status(401).json({"message": "Fest Id is missing"})
+      }
+      // we are going to change the Project Details
+      const usertoken= req.cookies.usertoken;
+      if(!usertoken){
+          return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
+      }
+      const decoded= jwt.verify(usertoken, "vinay");
+      const userId= decoded._id;
+              // now we are going to find out the details of teh user here extra like is he a valid user or not
+      const user= User.findById(userId);
+      if(!user){
+                  // so the user id not found
+          return res.status(404).json({ message: "User not found" }); // Use 404 for not found
+      }
+      else if(user.blocked){
+                  // so the user is blocked so he is uable to post a event
+          return res.status(405).json({
+              "message": "Your Account is blocked"
+              });
+      }
+  const userFests = user.festPosted || [];
+  const festIndex = userFests.findIndex((fest) => fest.toString() === festId); // Find project index
+
+    if (festIndex === -1) {
+      return res.status(404).json({ message: "Fest not found in your uploaded Fests" });
+    }
+
+    // 6. Delete Project (Core Functionality)
+    const deletedFests = await Fest.findByIdAndDelete(festId); // Assuming `YourModel` represents the project collection
+
+    if (!deletedFests) {
+      return res.status(500).json({ message: "Failed to delete Fest" });
+    }
+
+    // 7. Update User's Projects (Efficient Update with Pull Operator)
+    const updatedUser = await User.findByIdAndUpdate(userId, { $pull: {festPosted: festId } }, { new: true }); // Efficient update with `pull`
+    if (!updatedUser) {
+      return res.status(500).json({ message: "Failed to remove Fest from your Fests" });
+    }
+    return res.status(200).json({ message: "Fest deleted successfully" });
+    }
+    catch(err){
+        return res.status(500).json({"message": "Internal Server Error"});
+    }
+  }
+
+module.exports= {postFestController,
+  getAllFestsController,
+  getFestByIdController
+  ,getFestsByDateController,
+   getFestsByLocationController,
+   getUserPreferenceFestsController
+    ,deleteFestController,
+    updateFestController};

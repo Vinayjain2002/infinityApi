@@ -6,7 +6,7 @@ const Blogger= require("../../models/Blogger");
 const  Bootcamp= require("../../models/BootCamp");
 
 
-const PostBootCamp= async ()=>{
+const postBootCampController= async ()=>{
     try{
         const {postedBy,name, mode, lastDateToApply, description,registerationUrl,prizes,tutor,queryContacts,...data}= req.body;
         // checking all teh required fields are present or not
@@ -117,7 +117,7 @@ const PostBootCamp= async ()=>{
     }
 }
 
-const getAllBootcamps = async () => {
+const getAllBootcampsController = async () => {
     try {
       // Fetch all bootcamps with optional filtering and sorting
       const bootcamps = await Bootcamp.find({}); // Find all by default
@@ -134,7 +134,7 @@ const getAllBootcamps = async () => {
   };
   
 
-  const getParticularBootcamp = async () => {
+  const getParticularBootcampController = async () => {
     try {
       const { id } = req.params; // Assuming ID is passed in request params
   
@@ -160,7 +160,7 @@ const getAllBootcamps = async () => {
     }
   };
   
-  const getBootcampsByDate = async () => {
+  const getBootCampsByDateController = async () => {
     try {
       const { dateOfPosting, lastDateToApply, both } = req.body;
   
@@ -197,7 +197,7 @@ const getAllBootcamps = async () => {
   };
 
   // here we are going to define the code of the Bootcamp Controllers
-  const userPreferenceBootcamp = async () => {
+  const userPreferenceBootcampController = async () => {
     try {
       const { postedBy, organisedBy, level, location, prizes, mode, techStackRequired } = req.body;
   
@@ -258,6 +258,115 @@ const getAllBootcamps = async () => {
     }
   };
   
+  const deleteBootCampController= async(req,res,next)=>{
+    try{
+      // going to delete the Project Details
+      const {bootcampId}= req.params; // send the data in the form of the Bootcamp id
+      if(!bootcampId){
+        return res.status(401).json({"message": "Bootcamp Id is missing"})
+      }
+      // we are going to change the Project Details
+      const usertoken= req.cookies.usertoken;
+      if(!usertoken){
+          return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
+      }
+      const decoded= jwt.verify(usertoken, "vinay");
+      const userId= decoded._id;
+              // now we are going to find out the details of teh user here extra like is he a valid user or not
+      const user= User.findById(userId);
+      if(!user){
+                  // so the user id not found
+          return res.status(404).json({ message: "User not found" }); // Use 404 for not found
+      }
+      else if(user.blocked){
+                  // so the user is blocked so he is uable to post a event
+          return res.status(405).json({
+              "message": "Your Account is blocked"
+              });
+      }
+  const userBootcamps = user.bootCampPosted || [];
+  const bootcampIndex = userBootcamps.findIndex((bootcamp) => bootcamp.toString() === bootcampId); // Find project index
+
+    if (bootcampIndex === -1) {
+      return res.status(404).json({ message: "Bootcamp not found in your BootCamps" });
+    }
+
+    // 6. Delete Project (Core Functionality)
+    const deletedBootcamp = await Bootcamp.findByIdAndDelete(bootcampId); // Assuming `YourModel` represents the project collection
+
+    if (!deletedBootcamp) {
+      return res.status(500).json({ message: "Failed to delete Bootcamp" });
+    }
+
+    // 7. Update User's Projects (Efficient Update with Pull Operator)
+    const updatedUser = await User.findByIdAndUpdate(userId, { $pull: { bootCampPosted: bootcampId} }, { new: true }); // Efficient update with `pull`
+    if (!updatedUser) {
+      return res.status(500).json({ message: "Failed to remove Bootcamp from your posted Bootcamps" });
+    }
+    return res.status(200).json({ message: "Bootcamp deleted successfully" });
+  }
+  catch(err){
+      return res.status(500).json({"message": "Internal Server Error"});
+  }
+  }
+
+  const updateBootCampController = async(req,res,next)=>{
+    try{
+      // going to delete the Project Details
+      const {bootcampId}= req.params;
+      if(!bootcampId){
+          return res.status(401).json({"message": "Bootcamp Id is missing"})
+      }
+      // we are going to change the Project Details
+      const usertoken= req.cookies.usertoken;
+      if(!usertoken){
+          return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
+      }
+      const decoded= jwt.verify(usertoken, "vinay");
+      const userId= decoded._id;
+              // now we are going to find out the details of teh user here extra like is he a valid user or not
+      const user= User.findById(userId);
+      if(!user){
+                  // so the user id not found
+          return res.status(404).json({ message: "User not found" }); // Use 404 for not found
+      }
+      else if(user.blocked){
+                  // so the user is blocked so he is uable to post a event
+          return res.status(405).json({
+              "message": "Your Account is blocked"
+              });
+      }
+  const userBootcamps = user.bootCampPosted || [];
+  const bootcampIndex = userBootcamps.findIndex((bootcamp) => bootcamp.toString() === bootcampId); // Find project index
+
+    if (bootcampIndex === -1) {
+      return res.status(404).json({ message: "Bootcamp not found in your uploaded Bootcamps" });
+    }
+
+    // 6. Delete Project (Core Functionality)
+    const deletedBootcamp = await Bootcamp.findByIdAndDelete(bootcampId); // Assuming `YourModel` represents the project collection
+
+    if (!deletedBootcamp) {
+      return res.status(500).json({ message: "Failed to delete Bootcamp" });
+    }
+
+    // 7. Update User's Projects (Efficient Update with Pull Operator)
+    const updatedUser = await User.findByIdAndUpdate(userId, { $pull: {bootCampPosted: bootcampId } }, { new: true }); // Efficient update with `pull`
+    if (!updatedUser) {
+      return res.status(500).json({ message: "Failed to remove bootcamp from your Bootcamps" });
+    }
+    return res.status(200).json({ message: "Bootcamp deleted successfully" });
+  }
+  catch(err){
+      return res.status(500).json({"message": "Internal Server Error"});
+  }
+  }
 
 
-module.exports= {PostBootCamp, getAllBootcamps,getParticularBootcamp,getBootcampsByDate,userPreferenceBootcamp};
+  module.exports= {updateBootCampController,
+    deleteBootCampController,
+    userPreferenceBootcampController,
+    getBootCampsByDateController,
+    getParticularBootcampController
+    ,getAllBootcampsController,
+    postBootCampController};

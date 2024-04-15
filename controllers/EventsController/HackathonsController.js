@@ -4,7 +4,7 @@ const Blogger= require("../../models/Blogger");
 const Hackathon= require('../../models/postHackathon');
 
 
-const PostHackathon= async ()=>{
+const PostHackathonController= async ()=>{
     try{
         const {postedBy,name, mode, lastDateToApply, description, ideaSubmissionDate,maxTeamMembers,registerationUrl,problemStatement,prizes,organisedBy,...data}= req.body;
         const EventPoster="";
@@ -117,7 +117,7 @@ const PostHackathon= async ()=>{
 }
 
 
-const getAllHackathons = async () => {
+const getAllHackathonsController = async () => {
     try {
       // Fetch all hackathons (consider filtering and sorting if needed)
       const hackathons = await Hackathon.find({});
@@ -133,7 +133,7 @@ const getAllHackathons = async () => {
     }
   };
   
-const getParticularHackathon = async () => {
+const getParticularHackathonController = async () => {
     try {
       const { id } = req.params;
       // Validate ID presence and format (optional)
@@ -155,7 +155,7 @@ const getParticularHackathon = async () => {
     }
   };
   
-const getHackathonsByDate = async () => {
+const getHackathonsByDateController = async () => {
     try {const mongoose= require("mongoose");
     const express= require("express")
     const router= express.Router();
@@ -194,7 +194,7 @@ const getHackathonsByDate = async () => {
     }
   };
   
-const getUserPreferenceHackathons = async () => {
+const getUserPreferenceHackathonsController = async () => {
     try {
       const { postedBy, organisedBy, level, location, prizes, mode, techStackRequired } = req.body;
   
@@ -251,5 +251,115 @@ const getUserPreferenceHackathons = async () => {
     }
   };
   
+  const deleteHackathonController=async(req,res,next)=>{
+    try{
+      // going to delete the Project Details
+      const {hackathonId}= req.params; // send the data in the form of the Bootcamp id
+      if(!hackathonId){
+        return res.status(401).json({"message": "Hackathon Id is missing"})
+      }
+      // we are going to change the Project Details
+      const usertoken= req.cookies.usertoken;
+      if(!usertoken){
+          return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
+      }
+      const decoded= jwt.verify(usertoken, "vinay");
+      const userId= decoded._id;
+              // now we are going to find out the details of teh user here extra like is he a valid user or not
+      const user= User.findById(userId);
+      if(!user){
+                  // so the user id not found
+          return res.status(404).json({ message: "User not found" }); // Use 404 for not found
+      }
+      else if(user.blocked){
+                  // so the user is blocked so he is uable to post a event
+          return res.status(405).json({
+              "message": "Your Account is blocked"
+              });
+      }
+  const userHackathons = user.hackathonsPosted || [];
+  const hackathonIndex = userHackathons.findIndex((hackathon) => hackathon.toString() === hackathonId); // Find project index
 
-module.exports= {PostHackathon, getAllHackathons,getParticularHackathon,getHackathonsByDate,getUserPreferenceHackathons};
+    if (hackathonIndex === -1) {
+      return res.status(404).json({ message: "Hackathon not found in your Hackathon" });
+    }
+
+    // 6. Delete Project (Core Functionality)
+    const deletedHackathon = await Hackathon.findByIdAndDelete(hackathonId); // Assuming `YourModel` represents the project collection
+
+    if (!deletedHackathon) {
+      return res.status(500).json({ message: "Failed to delete Hackathon" });
+    }
+
+    // 7. Update User's Projects (Efficient Update with Pull Operator)
+    const updatedUser = await User.findByIdAndUpdate(userId, { $pull: {hackathonsPosted: hackathonId} }, { new: true }); // Efficient update with `pull`
+    if (!updatedUser) {
+      return res.status(500).json({ message: "Failed to remove Hackathon from your posted Hackathon" });
+    }
+    return res.status(200).json({ message: "Hackathon deleted successfully" });
+  }
+  catch(err){
+      return res.status(500).json({"message": "Internal Server Error"});
+  }
+  }
+
+  const updateHacakathonController= async(req,res,next)=>{
+    try{
+      // going to delete the Project Details
+      const {hackathonId}= req.params;
+      if(!hackathonId){
+          return res.status(401).json({"message": "Hackathon Id is missing"})
+      }
+      // we are going to change the Project Details
+      const usertoken= req.cookies.usertoken;
+      if(!usertoken){
+          return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
+      }
+      const decoded= jwt.verify(usertoken, "vinay");
+      const userId= decoded._id;
+              // now we are going to find out the details of teh user here extra like is he a valid user or not
+      const user= User.findById(userId);
+      if(!user){
+                  // so the user id not found
+          return res.status(404).json({ message: "User not found" }); // Use 404 for not found
+      }
+      else if(user.blocked){
+                  // so the user is blocked so he is uable to post a event
+          return res.status(405).json({
+              "message": "Your Account is blocked"
+              });
+      }
+  const userHackathons = user.hackathonsPosted || [];
+  const hackathonIndex = userHackathons.findIndex((hackathon) => hackathon.toString() === hackathonId); // Find project index
+
+    if (hackathonIndex === -1) {
+      return res.status(404).json({ message: "Hackathon not found in your uploaded Hackathon" });
+    }
+
+    // 6. Delete Project (Core Functionality)
+    const deletedHackathon = await Hackathon.findByIdAndDelete(hackathonIndex); // Assuming `YourModel` represents the project collection
+
+    if (!deletedHackathon) {
+      return res.status(500).json({ message: "Failed to delete Hackathon" });
+    }
+
+    // 7. Update User's Projects (Efficient Update with Pull Operator)
+    const updatedUser = await User.findByIdAndUpdate(userId, { $pull: {hackathonsPosted: hackathonId } }, { new: true }); // Efficient update with `pull`
+    if (!updatedUser) {
+      return res.status(500).json({ message: "Failed to remove hackathon from your Bootcamps" });
+    }
+    return res.status(200).json({ message: "Hackathon deleted successfully" });
+  }
+  catch(err){
+      return res.status(500).json({"message": "Internal Server Error"});
+  }
+  }
+
+module.exports= {PostHackathonController,
+   getAllHackathonsController,
+   getParticularHackathonController,
+   getHackathonsByDateController,
+   getUserPreferenceHackathonsController,
+   deleteHackathonController,
+   updateHacakathonController
+  };
