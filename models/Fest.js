@@ -1,13 +1,8 @@
 const mongoose= require("mongoose")
 const FestSchema= mongoose.Schema(
     {
-        potedBy: {
+        postedBy: {
             type: String,
-            required: true
-        },
-        designation: {
-            type: String,
-            enum: ["User", "Blogger", "Tutor"],
             required: true
         },
         eventname: {

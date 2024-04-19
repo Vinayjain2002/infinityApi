@@ -8,6 +8,8 @@ const { loginUserNotfyEmail, welcomeUserEmail, resetUserEmail } = require("../au
 const {uploadOnCloudinary}=require('../../utils/cloudinary')
 dotenv.config();
 
+// some erroor is coming while loggin the user
+
 const registerUserController = async (req, res) => {
   // we need to first check the email or the phone no first
     try {
@@ -20,9 +22,6 @@ const registerUserController = async (req, res) => {
             return res.status(409).json({ message: "Email already exists" }); // Use 409 for conflict
         }
         const saltRounds = 10;
-        // Adjust based on security requirements (higher for more security)
-        // here we are going to define a token
-        // here we create a temporary password for the user and we need to create a token and email so that user could change the email
         const hashedPassword = await bcrypt.hash(username, saltRounds);
         const newUser = new User({
             username:username,
@@ -30,25 +29,26 @@ const registerUserController = async (req, res) => {
             mobileNo: mobileNo,
             password: hashedPassword,
         });
-        console.log(newUser);
         await newUser.save();
-        const passwordtoken = jwt.sign({ _id: newUser._id },"vinayResetPassword", { expiresIn: "1d" }); // Use env variable for secret
+        const passwordtoken =jwt.sign({ _id: newUser._id },"vinayResetPassword", { expiresIn: "1d" }); // Use env variable for secret
         newUser.passwordResetToken= passwordtoken;
-        console.log(passwordtoken)
         await newUser.save();
         const passwordResetEmail= await passwordsetEmail(username,email,"www.google.com");
         if(!passwordResetEmail){
+          // we are going to delete the user details as it may leads to the comflict when the user will try t reregister on the app
+          await User.findOneAndDelete({_id: newUser._id});
           return res.status(422).json({"message": "Unable to verify Email"})
         }
         // going to define the cookies for the again auto logging
         const usertoken= jwt.sign({_id: newUser._id},"vinay", {expiresIn: "3d"});
-        res.cookie("usertoken", usertoken, {httpOnly: true}).status(200).json({"message": "User registered Successfully"})
         const welcomeuser= await welcomeUserEmail(email,username, "www.google.com");
         if(welcomeuser){
-          console.log("welcome mail send to the user")
+          console.log("welcome mail send to the user");
+          res.cookie("usertoken", usertoken, {httpOnly: true}).status(200).json({"message": "User registered Successfully and welcome mail send"})
         }
         else{
           console.log("welcome mail not send");
+          res.cookie("usertoken", usertoken, {httpOnly: true}).status(200).json({"message": "User registered Successfully but welcome mail not send"})
         }
     } catch (err) {
         console.error(err); // Log the error for debugging
@@ -69,8 +69,10 @@ const loginUserController = async (req, res) => {
       if (!user) {
         return res.status(401).json({"message": "User does not exists"})
       }
-      console.log(user);
       if(!user.blocked){
+        console.log(user.password);
+        console.log(req.body.password)
+
         const match = await bcrypt.compare(req.body.password, user.password); // Compare hashed password
           if (!match) {
             return res.status(403).json({"message": "Invalid Password"}) // Use 401 for incorrect password
@@ -194,14 +196,16 @@ const loginUserController = async (req, res) => {
           })
         }
         // from here we are going to change the data of the user profile
-        const {name, socialMedia,mobileNo, bio, description, wanttoCollaborate, age, location, prefferedLocation, prefferedEvents}= req.body;
-       
+        const {name, socialMedia,mobileNo, bio, description, wanttoCollaborate, age, location, prefferedLocation, prefferedEvents, speciality}= req.body;
+       if(speciality){
+        user.speciality= speciality;
+       }
         if(name){
           user.name= name;
         }
-        // if(socailMedia){
-        //   user.socialMedia.push
-        // }
+        if(socialMedia){
+          user.socialMedia= socialMedia; // we need to define the all the properties of the Social Media
+        }
         if(mobileNo){
           user.mobileNo= mobileNo;
         }
@@ -220,14 +224,15 @@ const loginUserController = async (req, res) => {
         if(location){
           user.location= location;
         }
-        // if(prefferedLocation){
-        //   user.prefferedLocation.push(prefferedLocation)
-        // }
-        // if(prefferedEvents){
-        //   user.prefferedEvents.push(prefferedEvents)
-        // }
+        if(prefferedLocation){
+          user.prefferedLocation= prefferedLocation; // we need to define the all teh properties from the Scratch.
+        }
+        if(prefferedEvents){
+          user.prefferedEvents= prefferedEvents; // we need to define the all teh properties from the Scratch.
+        }
+        user.modifiedAt= Date.now();
         // going to save the user
-        user.save();
+        await user.save();
         return res.status(200).json({"message": "Profile Updated Successfully"});
       } catch (err) {
         console.error("Error verifying token or fetching user:", err); // Log specific error details for debugging
@@ -458,7 +463,6 @@ const loginUserController = async (req, res) => {
   } else {
     user = await User.findOne({ username });
   }
-console.log(user);
   if (!user) {
     return res.status(404).json({ message: "No user found." });
   }

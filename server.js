@@ -6,7 +6,7 @@ const {errorHandling}= require("./middleWare/error");
 const connectDb = require("./database/db");
 const authRouter= require('./routers/auth');
 const createAdminRouter= require("./routers/admin/createAdmin");
-const { initializeApp } = require('firebase-admin/app');
+const projectRoute= require("./routers/Projects/projects")
 
 const app= express();
 // going to create a Socketio server
@@ -17,14 +17,9 @@ app.use(cookieParser())
 app.use(cors());
 app.use("/api/infinity/auth", authRouter);
 app.use("/api/infinity/",createAdminRouter);
-
+app.use("/api/infinity/project", projectRoute);
 // this is the function to get connected with the database
 connectDb();
-
-const firebaseApp= initializeApp();
-if(firebaseApp){
-    console.log("firebase is connected")
-}
 // We are going to connect with the socket io server also
 
 app.listen(3000, ()=>{

@@ -4,11 +4,6 @@ const BootCampSchema= mongoose.Schema({
         type: String,
         required: true
     },
-    designation: {
-        type: String,
-        enum: ["User", "Blogger"],
-        required: true
-    },
     name: {
         type: String,
         required: true
@@ -18,9 +13,8 @@ const BootCampSchema= mongoose.Schema({
         enum: ["Online", "Offline"],
         required: true
     },
-    date: {
+    dateOfEvent: {
         type: Date,
-        default: Date.now
     },
     lastDateToApply: {
         type: Date,
@@ -32,7 +26,8 @@ const BootCampSchema= mongoose.Schema({
     },
     entryFee: {
         type: Number,
-        default: "0"
+        default: "0",
+        required: true
     },
     totalSeats: {
         type: Number,
@@ -53,7 +48,8 @@ const BootCampSchema= mongoose.Schema({
     ],
     organiser: [
         {
-            type: String
+            type: String,
+            required: true
         }
     ],
     eventsDetail: [
@@ -95,10 +91,7 @@ const BootCampSchema= mongoose.Schema({
         {
             type: String
         }
-    ],
-    tutorId: {
-        type: String
-    }
+    ]
 });
 
 const BootCamp= mongoose.model("BootCamp", BootCampSchema)

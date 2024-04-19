@@ -6,7 +6,7 @@ const Blogger= require("../../models/Blogger");
 const { passwordsetEmail } = require("../authEmailSenders/forgotPasswordEmailSender");
 const { BloggerWelcome, resetBloggerEmail, loginBloggerNotfyEmail } = require("../authEmailSenders/BloggerEmail");
  
-const registerBloggerController= async( req,res)=> {
+const registerBloggerController= async( req,res,next)=> {
       // we need to first check the email or the phone no first
     try{
         const {password, username, email}= req.body;
@@ -29,7 +29,7 @@ const registerBloggerController= async( req,res)=> {
             password: hashedPasword
         });
         await newBlogger.save();
-        const passwordtoken = jwt.sign({ _id: newBlogger._id },"vinayBloggerResetPassword", { expiresIn: "1d" }); // Use env variable for secret
+        const passwordtoken = await jwt.sign({ _id: newBlogger._id },"vinayBloggerResetPassword", { expiresIn: "1d" }); // Use env variable for secret
         newBlogger.passwordResetToken= passwordtoken;
         await newBlogger.save();
         const passwordResetEmail= await passwordsetEmail(username,email,"www.google.com");
@@ -37,7 +37,7 @@ const registerBloggerController= async( req,res)=> {
           return res.status(436).json({"message": "Unable to verify Email"})
         }
 
-        const bloggertoken= jwt.sign({_id: newBlogger._id}, "vinayBlogger",{expiresIn: "3d"})
+        const bloggertoken= await jwt.sign({_id: newBlogger._id}, "vinayBlogger",{expiresIn: "3d"})
         res.cookie("bloggertoken", bloggertoken,{httpOnly: true}).status(201).json({"message": "BLogger Registered Successfuly"});
         const welcomeBlogger= await BloggerWelcome(username,email, "www.google.com");
         if(welcomeBlogger){
@@ -189,14 +189,20 @@ const updateBloggerProfileController= async (req,res,next)=>{
             })
           }
           // from here we are going to change the data of the user profile
-          const {name, socialMedia,mobileNo, bio, description,blogsLevel}= req.body;
+          const {name, socialMedia,mobileNo, bio, description,blogsLevel,experience, techStack}= req.body;
           // now we are going to update those data inside our database also
           if(name){
             blogger.name= name;
           }
-          // if(socailMedia){
-          //   user.socialMedia.push
-          // }
+          if(socialMedia){
+            blogger.socialMedia= socialMedia;
+          }
+          if(techStack){
+            blogger.techStack= techStack;
+          }
+          if(experience){
+            blogger.experience= experience;
+          }
           if(mobileNo){
             blogger.mobileNo= mobileNo;
           }
@@ -209,7 +215,8 @@ const updateBloggerProfileController= async (req,res,next)=>{
           if(blogsLevel){
             blogger.blogsLevel= blogsLevel;
           }
-          blogger.save();
+          blogger.modifiedAt= Date.now();
+          await blogger.save();
           return res.status(200).json({"message": "Profile Updated Successfully"});
         } catch (err) {
           console.error("Error verifying token or fetching user:", err); // Log specific error details for debugging

@@ -30,6 +30,7 @@ async function AccountBlocked(name,email){
 
 async function welcomeUserEmail(useremail, username,linktoplaystore){
   try{
+    console.log(useremail, username, linktoplaystore)
     // here we are going to define the text for the sending of the email
     const senderemail= "infinetyassist@gmail.com";
     const supportemail= "infinetyhelpdesk@gmail.com";

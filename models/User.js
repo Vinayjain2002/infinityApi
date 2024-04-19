@@ -47,7 +47,7 @@ const userSchema= new mongoose.Schema({
         type: String,
         required: true
     },
-         mobileNo: {
+    mobileNo: {
         type: String,
    },
     bio: {
@@ -154,10 +154,22 @@ const userSchema= new mongoose.Schema({
             ref: "Hackathons"
         }
     ],
-    savedCourses: [
+    savedProjects: [
         {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Courses"
+            ref: "Project"
+        }
+    ],
+    savedBootcamp: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Bootcamp"
+        }
+    ],
+    savedFest: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Fest"
         }
     ],
     hackathonsApplied: [
@@ -186,7 +198,8 @@ const userSchema= new mongoose.Schema({
     ],
     projectsUploaded: [
         {
-            type: String
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Project"
         }
     ]
 });

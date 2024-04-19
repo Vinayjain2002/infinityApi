@@ -7,11 +7,12 @@ const ProjectSchema= mongoose.Schema({
     },
     projectUploadedBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
+        ref: "User",
+        required: true
     },
     projectUploadedOn: {
         type: Date,
-        default: Date.now
+        default: Date.now()
     },
     tags:[
         {
@@ -32,7 +33,10 @@ const ProjectSchema= mongoose.Schema({
         default: false
     },
     description: [
-        {type: String}
+        {
+            type: String,
+            required:true
+        }
     ],
     projectImage: {
         type: String,
@@ -60,9 +64,9 @@ const ProjectSchema= mongoose.Schema({
             type: String
         }
     ],
-    prerequisite: {
+    prerequisite: [{
         type: String
-    }
+    }]
 });
 
 const Project=mongoose.model("Project", ProjectSchema);
