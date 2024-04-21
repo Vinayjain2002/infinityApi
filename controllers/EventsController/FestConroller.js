@@ -1,6 +1,5 @@
 // here we are ggoin to define the endpoint to store teh data of the events and want to retrive the data o the different conditions
 const mongoose = require("mongoose");
-const Events= require("../../models/Events");
 const Fest= require("../../models/Fest");
 const User = require('../../models/User');
 const Blogger= require("../../models/Blogger");
@@ -515,6 +514,7 @@ const getUserPreferenceFestsController = async () => {
 const getRandomFestsContoller= async(req,res,next)=>{
     // here we are going to define the route to get any random No of the Hackathons
     try{
+      const {pageNo}= req.params;
       const usertoken= req.cookies.usertoken;
       if(!usertoken){
           return res.status(401).json({ message: "Unauthorized: Token not found" });
@@ -528,8 +528,9 @@ const getRandomFestsContoller= async(req,res,next)=>{
           } else if (user.blocked) {
               return res.status(405).json({ message: "Your Account is blocked" });
           }
+          const skipLength= (pageNo-1)*10;
           // here we are going to fetch the new no of the newLength of the data 
-          const fest=await Fest.find({}).limit(20);
+          const fest=await Fest.find({}).skip(skipLength).limit(20);
           if(!fest && fest.length==0){
               return res.status(401).json({"message": "No Fest Found"});
           }
@@ -563,7 +564,6 @@ module.exports= {
   deleteFestController,
   updateFestController,
   getParticularFestController,
-  getFestByIdController,
   saveFestController,
   savedFestController
   ,getFestsByDateController,

@@ -65,12 +65,12 @@ const HackathonSchema = new mongoose.Schema({
         default: 1
     },
     additionalBenefits: [
-        {max
+        {
             type: String
         }
     ],
     maxTeamMembers: {
-        typr:Number,
+        type:Number,
         default: 3,
         required: true
     },

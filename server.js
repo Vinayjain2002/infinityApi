@@ -6,7 +6,10 @@ const {errorHandling}= require("./middleWare/error");
 const connectDb = require("./database/db");
 const authRouter= require('./routers/auth');
 const createAdminRouter= require("./routers/admin/createAdmin");
-const projectRoute= require("./routers/Projects/projects")
+const projectRouter= require("./routers/Projects/projects")
+const festRouter= require("./routers/events/fests");
+const bootcampRouter=require("./routers/events/Bootcamps");
+const hackathonRouter= require("./routers/events/hacakathons")
 
 const app= express();
 // going to create a Socketio server
@@ -17,7 +20,10 @@ app.use(cookieParser())
 app.use(cors());
 app.use("/api/infinity/auth", authRouter);
 app.use("/api/infinity/",createAdminRouter);
-app.use("/api/infinity/project", projectRoute);
+app.use("/api/infinity/project", projectRouter);
+app.use("/api/infinity/fest",festRouter )
+app.use("/api/infinity/bootcamp", bootcampRouter);
+app.use("/api/infinity/hackathon", hackathonRouter);
 // this is the function to get connected with the database
 connectDb();
 // We are going to connect with the socket io server also

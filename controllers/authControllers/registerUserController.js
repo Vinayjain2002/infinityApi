@@ -1,7 +1,7 @@
 const jwt= require("jsonwebtoken")
 const dotenv= require("dotenv")
 const bcrypt = require('bcryptjs'); // Import bcrypt for password hashing
-const User= require("../../models/User")
+const User= require("../../models/User");
 const {CustomError}= require("../../middleWare/error");
 const { sendPasswordResetEmail, passwordsetEmail } = require("../authEmailSenders/forgotPasswordEmailSender");
 const { loginUserNotfyEmail, welcomeUserEmail, resetUserEmail } = require("../authEmailSenders/UserEmail");
