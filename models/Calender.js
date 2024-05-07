@@ -34,7 +34,6 @@ const calendarSchema= mongoose.Schema({
        category: [
         {
             type: String,
-            required: true
         }
        ]
 });

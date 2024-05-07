@@ -2,13 +2,18 @@ const bcrypt= require("bcryptjs")
 const Admin= require("../../models/admin")
 const {CustomError}= require("../../middleWare/error")
 const jwt= require("jsonwebtoken");
+const dotenv= require("dotenv");
 const { loginAdminNotfyEmail } = require("../authEmailSenders/AdminEmail");
+dotenv.config();
 
 const LoginAsAdminController = async (req, res, next) => {
     try {
       const {adminpassword, adminemail}= req.body;
+      if(!adminpassword && !adminemail){
+        return res.status(404).json({"message":"Invalid Credentials"})
+      }
       const adminUser = await Admin.findOne({ adminemail }); // Assuming email is used for login
-      if (!adminUser) {
+      if (!adminUser && !adminUser.deledAdminAccount) {
         return res.status(401).json({ message: "Email not found" }); // More specific error
       }
       if(!adminpassword){
@@ -22,10 +27,10 @@ const LoginAsAdminController = async (req, res, next) => {
       const match = await bcrypt.compare(adminpassword, adminUser.adminpassword); // Compare hashed password
   
       if (!match) {
-        return new CustomError("Invalid Credentials", 401); // Use 401 for incorrect password
+        return res.status(401).json({"message":"Invalid Credentials"});// Use 401 for incorrect password
       }
       // we are going to define the code for the token
-      const adminToken= jwt.sign({_id: adminUser._id},"vinayadmin", {expiresIn: "1d"});
+      const adminToken= jwt.sign({_id: adminUser._id},process.env.ADMIN_TOKEN, {expiresIn: "1d"});
       res.cookie("adminToken", adminToken, {httpOnly: true});
       const date = new Date();
         const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;

@@ -1,6 +1,10 @@
 const mongoose= require("mongoose")
 const FestSchema= mongoose.Schema(
     {
+        image: {
+            type: String,
+            required: true
+        },
         postedBy: {
             type: String,
             required: true

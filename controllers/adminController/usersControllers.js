@@ -3,20 +3,23 @@ const bcrypt= require("bcryptjs")
 const jwt=  require("jsonwebtoken");
 const User= require("../../models/User");
 const Admin= require("../../models/admin");
+const dotenv= require("dotenv")
 const { passwordsetEmail } = require("../authEmailSenders/forgotPasswordEmailSender");
 const { welcomeUserEmail } = require("../authEmailSenders/UserEmail");
 
+dotenv.config();
 // only the delete Account Controller is left
 
 const createUserAccountController = async (req, res) => {
     try {
       // Separate JWT verification
       const adminToken = req.cookies.adminToken;
+      const {username, email } = req.body;
       if (!adminToken) {
-        throw new CustomError("Admin please login", 401); // 401 for unauthorized access
+        return res.status(401).json({"message": "Admin Token not found"}) // 401 for unauthorized access
       }
   
-      const decodedData = await jwt.verify(adminToken, "vinayAdmin");
+      const decodedData = jwt.verify(adminToken, process.env.ADMIN_TOKEN);
       const admin= Admin.findOne({_id: decodedData._id})
       if(!admin){
         return res.status(409).json({
@@ -24,11 +27,10 @@ const createUserAccountController = async (req, res) => {
         })
       }
       // Admin authorization
-      if (!admin.approvedadmin || !admin.userAccess ) {
+      if (!admin.approvedadmin && !admin.userAccess ) {
         return res.status(403).json({ message: "You are not authorized to create users" });
       }  
       // Validate and hash password
-      const {username, email } = req.body;
       if ( !username || !email) {
         return res.status(409).json({"message": "Please provide the email and the password"})
       }
@@ -48,12 +50,12 @@ const createUserAccountController = async (req, res) => {
         ...req.body
         // blocked: false by default (unless intended for specific scenarios)
       });
-     admin.createdUser.push(newUser._id)
-      await admin.save();
       await newUser.save(); // Assuming User model has a save() method
-      const passwordtoken = jwt.sign({ _id: newUser._id },"vinayResetPassword", { expiresIn: "1d" }); // Use env variable for secret
+      
+      admin.createdUser.push(newUser._id)
+      await admin.save();
+      const passwordtoken = jwt.sign({ _id: newUser._id },process.env.PASSWORD_RESET_TOKEN, { expiresIn: "1d" }); // Use env variable for secret
       newUser.passwordResetToken= passwordtoken;
-      console.log(passwordtoken);
       await newUser.save();
       const passwordResetEmail= await passwordsetEmail(username,email,"www.google.com");
       if(!passwordResetEmail){
@@ -66,7 +68,7 @@ const createUserAccountController = async (req, res) => {
         else{
           console.log("welcome mail not send");
         }
-      res.status(201).json({ message: "User registered Successfully" });
+      return res.status(201).json({ message: "User registered Successfully" });
     } catch (err) {
       console.error(err); // Log specific error for debugging
       res.status(err.statusCode || 500).json({ message: err.message || "Internal Server Error" });
@@ -77,12 +79,14 @@ const createUserAccountController = async (req, res) => {
         try {
           // Separate JWT verification
           const adminToken = req.cookies.adminToken;
+          const {userId}= req.body;
+
           if (!adminToken) {
             throw new CustomError("Admin please login", 401); // 401 for unauthorized access
           }
       
-          const decodedData = await jwt.verify(adminToken, "vinayAdmin");
-          const admin= Admin.findOne({_id: decodedData._id});
+          const decodedData = jwt.verify(adminToken, process.env.ADMIN_TOKEN);
+          const admin= await Admin.findOne({_id: decodedData._id});
           if(!admin){
             return res.status(409).json({"message": "Admin not found"})
           }
@@ -92,28 +96,14 @@ const createUserAccountController = async (req, res) => {
           }
       
           const adminId = decodedData._id;
-      
           // Find admin and user
-          const [ user] = await Promise.all([
-            findTargetUser(req.body), // Helper function for user search
-          ]);
-      
-          if (!admin) {
-            throw new CustomError("Admin not found", 404);
-          }
-      
-          if (!user) {
-            throw new CustomError("User does not exist", 401);
-          }
-      
+          const user= await User.findById(userId);
           // Update user and admin
           user.blocked = true;
           await user.save(); // Assuming user model has a save() method
-      
           admin.blockedUsers.push(user);
           await admin.save(); // Assuming admin model has a save() method
-      
-          res.status(202).json({ message: "User blocked Succesfully" });
+          return res.status(200).json({ message: "User blocked Succesfully" });
         } catch (err) {
           console.error(err); // Log specific error for debugging
           res.status(err.statusCode || 500).json({ message: err.message || "Internal Server Error" });
@@ -130,18 +120,16 @@ const deleteUserAccountController= async(req, res,next)=>{
 const accessUserAccountController = async (req, res, next) => {
     try {
       // Separate JWT verification
-      const token = req.cookies.token;
-      if (!token) {
-        throw new CustomError("Admin please login", 401); // 401 for unauthorized access
+      const adminToken = req.cookies.adminToken;
+      if (!adminToken) {
+        return res.status(401).json({"message": "No Admin Token Found"}); // 401 for unauthorized access
       }
   
-      const decodedData = await jwt.verify(token, "vinayadmin");
-  
-      // Admin authorization
-      if (!decodedData.admin && !decodedData.admin.userAccess && !decodedData.admin.approvedadmin) {
+      const decodedData = jwt.verify(token,process.env.ADMIN_TOKEN);
+      const admin= await Admin.findById(decodedData_id);
+      if (!admin&& !admin.userAccess && !admin.approvedadmin) {
         return res.status(403).json({ message: "You are not authorized to access user information" });
       }
-  
       // Search user by username or email
       const searchField = req.body.email || req.body.username;
       if (!searchField) {
@@ -156,25 +144,15 @@ const accessUserAccountController = async (req, res, next) => {
      const {password, ...data}= user._doc;
       res.status(200).json({ message: "Successfully found the user", data: data });
     
-      decodedData.admin.accessedUserAccount.push(user._id);
-      decodedData.admin.save();
+      admin.accessedUserAccount.push(user._id);
+      await admin.save();
     } catch (err) {
       console.error(err); // Log specific error for debugging
-      res.status(err.statusCode || 500).json({ message: err.message || "Internal Server Error" });
+      return res.status(err.statusCode || 500).json({ message: err.message || "Internal Server Error" });
     }
   };
   
 
-
-async function findTargetUser(body) {
-    if (body.username) {
-      return User.findOne({ username: body.username });
-    } else if (body.email) {
-      return User.findOne({ email: body.email });
-    } else {
-      throw new CustomError("Admin please provide the email or the username", 400);
-    }
-}
 
 module.exports= {
     createUserAccountController,

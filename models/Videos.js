@@ -1,16 +1,16 @@
 const mongoose= require("monoose")
 
 const VideosSchema= mongoose.Schame({
-    freeAviable: {
-        type: Boolean,
-        default: false
-    },
     url: {
         type: String
     },
+    videoBlocked: {
+        type: Bollean,
+        default: false
+    },
     owner: {
         type:mongoose.Schema.Types.ObjectId,
-        ref: "Tutor"
+        ref: "User"
     },
     ownerPlaced: {
         type: mongoose.Schema.Types.ObjectId,
@@ -24,25 +24,27 @@ const VideosSchema= mongoose.Schame({
             type: String
         }
     ],
-    level: {
+    
+    title: {
         type: String,
-        default: "Medium"
+        required:true
     },
-    prerequisite: [
-        {
-            type: String,
-        }
-    ],
-    techStack: [
-        {
-            type: String
-        }
-    ],
+    summary:{
+        type: String
+    },
     description: [
         {
             type: String
         }
-    ]
+    ],
+    createdAt: {
+        type: Date,
+        default: Date.now()
+    },
+    modifiedAt: {
+        type: Date,
+        default: Date.now()
+    }
 });
 
 const Video= mongoose.model("Video", VideosSchema);

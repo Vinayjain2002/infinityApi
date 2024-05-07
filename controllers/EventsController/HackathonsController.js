@@ -2,7 +2,8 @@ const mongoose= require("mongoose");
 const User= require('../../models/User');
 const Blogger= require("../../models/Blogger");
 const Hackathon= require('../../models/Hackathon');
-
+const dotenv= require("dotenv")
+dotenv.config();
 
 const PostHackathonController= async ()=>{
     try{
@@ -21,7 +22,7 @@ const PostHackathonController= async ()=>{
                 return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
               }     
               try{
-                const decoded=await jwt.verify(usertoken, "vinay");
+                const decoded=await jwt.verify(usertoken, process.env.USER_TOKEN);
                 const userId= decoded._id;
                 // now we are going to find out the details of teh user here extra like is he a valid user or not
                 const user=await User.findById(userId);
@@ -58,8 +59,8 @@ const PostHackathonController= async ()=>{
                 // so here we had used to store the other data of the fest
                 await newHackathon.save();
                 // now we need to add the Fest to the user Endpoints also
-                // user.hackathonsPosted.push(newHackathon._id); // Push directly to existing array
-                // await user.save();
+                user.hackathonsPosted.push(newHackathon._id); // Push directly to existing array
+                await user.save();
                 return res.status(200).json({ message: "Fest added successfully!" });
               }  
               catch(err){
@@ -76,98 +77,32 @@ const PostHackathonController= async ()=>{
 
 const getAllHackathonsController = async () => {
     try {
+      const pageNo= req.params?.pageNo ?? 1;
+      const skipLength= (pageNo-1)*10;
       // Fetch all hackathons (consider filtering and sorting if needed)
-      const hackathons = await Hackathon.find({});
-      const length= hackathons.length;
+      const hackathons = await Hackathon.find({}).skip(skipLength).limit(10);
       if (!hackathons || hackathons.length === 0) {
         return res.status(204).json({ message: "No hackathons found" });
       }
   
-      return res.status(200).json({ message: "Hackathons fetched successfully", data: hackathons, length: length});
+      return res.status(200).json({ message: "Hackathons fetched successfully", data: hackathons, length: 10});
     } catch (err) {
       console.error(err);
       return res.status(500).json({ message: "Internal Server Error" });
     }
   };
 
-  const getLimitHackathonController= async(req,res,next)=>{
-    try{
-      // here we are going to define the route to save the Projects for the users
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
-          return res.status(401).json({ message: "Unauthorized: Token not found" });
-      }
-      try{
-          const decoded = jwt.verify(usertoken, "vinay");
-          const userId = decoded._id;
-          const user = await User.findById(userId);
-          if (!user) {
-              return res.status(404).json({ message: "User not found" });
-          } else if (user.blocked) {
-              return res.status(405).json({ message: "Your Account is blocked" });
-          }
-          // we are going to define teh code to retrive the data from the api
-          const hackathons= await Hackathon.find({}).limit(10);
-          if(!hackathons&& hackathons.length==0){
-              return res.status(401).json({"message": "No Hackathon Found"});
-          }        
-          return res.status(200).json({"message": "Hackathon Fetched Successfully", data: hackathons, length: 10}); 
-      }
-      catch(err){
-          return res.status(500).json({"message": "Internal Server Error"})
-      }
-  }
-  catch(err){
-      return res.status(500).json({"message": "Internal Server Error"})
-  }
-}
 
-const getNextHackathonsController = async(req,res,next)=>{
-  try{
-      const usertoken= req.cookies.usertoken;
-      const {pageNo}= req.params;
-      if(!pageNo){
-          return res.status(404).json({"message":"Page not is not find"});
-      }
-      if(!usertoken){
-          return res.status(401).json({ message: "Unauthorized: Token not found" });
-      }
-      try{
-          const decoded = jwt.verify(usertoken, "vinay");
-          const userId = decoded._id;
-          const user = await User.findById(userId);
-          if (!user) {
-              return res.status(404).json({ message: "User not found" });
-          } else if (user.blocked) {
-              return res.status(405).json({ message: "Your Account is blocked" });
-          }
-          const skipLength= (pageNo-1)*10;
-          // here we are going to fetch the new no of the newLength of the data 
-          const hackathons=await Hackathon.find({}).skip(skipLength).limit(10);
-          if(!hackathons && hackathons.length==0){
-              return res.status(401).json({"message": "No Hackathons Found"});
-          }
-          return res.status(200).json({"message": "Hackathons Fetched Successfully", data: hackathons, length:10}); 
-      }
-      catch(err){
-          return res.status(500).json({"message": "Internal Server Error"})
-      }
-  }
-  catch(err){
-      return res.status(500).json({"message": "Internal Server Error"})
-  }
-}  
-  
 const getParticularHackathonController = async () => {
     try {
-      const { id } = req.params;
+      const { hackathonId } = req.params;
       // Validate ID presence and format (optional)
-      if (!id) {
+      if (!hackathonId) {
         return res.status(400).json({ message: "Missing hackathon ID" });
       }
   
       // Efficiently fetch hackathon by ID using findById
-      const hackathon = await Hackathon.findById(id);
+      const hackathon = await Hackathon.findById(hackathonId);
   
       if (!hackathon) {
         return res.status(404).json({ message: "No hackathon found with that ID" });
@@ -182,9 +117,9 @@ const getParticularHackathonController = async () => {
   
 const getHackathonsByDateController = async () => {
     try {
-    
+      const pageNo= req.params?.pageNo ?? 1;
       const { dateOfPosting, lastDateToApply, both } = req.body;
-  
+      const skipLength= (pageNo-1)*10;
       let pipeline = []; // Initialize empty pipeline
       let sortCriteria = {}; // Initialize empty sort criteria
   
@@ -201,6 +136,7 @@ const getHackathonsByDateController = async () => {
       }
   
       pipeline.push({ $match: {} });
+      pipeline.push({$skip: skipLength});
        // Match all documents by default
        pipeline.push({$limit: 10});
       pipeline.push({ $sort: sortCriteria });
@@ -218,117 +154,12 @@ const getHackathonsByDateController = async () => {
       return res.status(500).json({ message: "Internal Server Error" });
     }
   };
-
-
-const getNextHackathonByDateController= async(req,res,next)=>{
-  // here we are going to get the nextProjects Uploaded By the Date
-  try {
-    const { dateOfPosting, lastDateToApply, both } = req.body;
-      const {pageNo}= req.params;
-      if(!pageNo){
-          return res.status(404).json({"message": "Internal Server Error"});
-      }
-      let pipeline = []; // Initialize empty pipeline
-      let sortCriteria = {}; // Initialize empty sort criteria
-      const skipLength= (pageNo-1)*10;
-      
-      if (dateOfPosting) {
-        sortCriteria = { dateOfPosting: -1 }; // Sort by dateOfPosting descending
-      } else if (lastDateToApply) {
-        sortCriteria = { lastDateToApply: 1 }; // Sort by lastDateToApply ascending
-      } else if (both) {
-        // Handle both criteria: sort by lastDateToApply ascending, then dateOfPosting descending
-        sortCriteria = { lastDateToApply: 1, dateOfPosting: -1 };
-      } else {
-        return res.status(400).json({ message: "Invalid request parameters. Specify dateOfPosting, lastDateToApply, or both." });
-      }  
-      pipeline.push({ $match: {} }); // Match all documents by default
-      pipeline.push({ $skip: skipLength})
-      pipeline.push({ $limit: 10 });
-      pipeline.push({ $sort: sortCriteria });
-  
-      // Fetch hackathons using aggregation pipeline
-      const hackathons = await Hackathon.aggregate(pipeline);
-  
-      if (!hackathons || hackathons.length === 0) {
-        return res.status(204).json({ message: "No Hackathons found based on your criteria" });
-      }
-  
-      return res.status(200).json({ message: "Hackathons fetched successfully", data: hackathons });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Internal Server Error" });
-    }
-}
-
-  
-const getUserPreferenceHackathonsController = async () => {
-    try {
-      const {name, entryFee,organisedBy, level, location, prizes, mode, techStackRequired,maxTeamMembers, organisationType  } = req.body;
-      const {pageNo}= req.params;
-      let filters = []; // Initialize an empty filters array
-  
-      // Build filters based on user preferences (include checks for null values)
-      if (name) {
-        filters.push({name});
-      }
-      if (organisedBy) {
-        filters.push({ organisedBy });
-      }
-      if (level) {
-        filters.push({ level });
-      }
-      if(prizes){
-        filters.push({prizes});
-      }
-      if (location) {
-        filters.push({ location }); // Assuming location is a string field
-      }
-      if (mode) {
-        filters.push({ mode });
-      }
-      if(organisationType){
-        filters.push({organisationType});
-      }
-
-      if (techStackRequired && techStackRequired.length > 0) {
-        filters.push({ tags: { $in: techStackRequired } }); // Match projects with at least one tag from the list
-    }
-    if(entryFee){
-      filters.push({entryFee: {$lt: entryFee}})
-    }
-    if(maxTeamMembers){
-      filters.push({maxTeamMembers: {$lt: maxTeamMembers}});
-    }
-      // Match all documents by default if no filters are provided
-      const pipeline = filters.length === 0 ? [{ $match: {} }] : [{ $match: { $and: filters } }];
-  
-      // Sort by deadline ascending and dateOfPosting descending (optional)
-      pipeline.push({
-        $sort: {
-          lastDateToApply: 1, // Assuming lastDateToApply represents deadline
-          dateOfPosting: -1,
-        },
-      });
-  
-      // Fetch hackathons using aggregation pipeline
-      const hackathons = await Hackathon.aggregate(pipeline);
-  
-      if (!hackathons || hackathons.length === 0) {
-        return res.status(204).json({ message: "No hackathons found matching your preferences" });
-      }
-  
-      return res.status(200).json({ message: "Hackathons fetched successfully", data: hackathons });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Internal Server Error" });
-    }
-  };
   
 
-
-const getNextUserPrefHackathonsController= async(req,res,next)=>{
+const getUserPrefHackathonsController= async(req,res,next)=>{
   try{
+    const pageNo= req.params?.pageNo ?? 1;
+    const skipLength= (pageNo-1)*10;
     const {name, entryFee,organisedBy, level, location, prizes, mode, techStackRequired,maxTeamMembers, organisationType  } = req.body;
   
     let filters = []; // Initialize an empty filters array
@@ -366,7 +197,6 @@ const getNextUserPrefHackathonsController= async(req,res,next)=>{
     filters.push({maxTeamMembers: {$lt: maxTeamMembers}});
   }
       // going to fetch the data based on the filters
-      const skipLength= (pageNo-1)*10;
       const findHackathons= await Hackathon.find({$and: filters}).skip(skipLength).limit(10);
       if(!findHackathons || findHackathons.length===0){
           return res.status(204).json({"message": "no Hackathons Find"})
@@ -395,7 +225,7 @@ const getNextUserPrefHackathonsController= async(req,res,next)=>{
       if(!usertoken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, "vinay");
+      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user= await User.findById(userId);
@@ -448,7 +278,7 @@ const getNextUserPrefHackathonsController= async(req,res,next)=>{
       if(!usertoken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, "vinay");
+      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -490,7 +320,7 @@ const savedHackathonsController = async (req, res, next) => {
       }
       try {
           // we are going to find out the details of the user
-          const decoded = jwt.verify(usertoken, "vinay");
+          const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
           const userId = decoded._id;
           const user = await User.findById(userId);
           if (!user) {
@@ -523,7 +353,7 @@ const savedHackathonsController = async (req, res, next) => {
 const saveHackathonController= async(req,res,next)=>{
   try{
       // here we are going to define the route to save the Projects for the users
-      const {hackathonId}= req.body;
+      const {hackathonId}= req.params;
       if(!hackathonId){
           return res.status(404).json({"message": "Hackathon id is missing"})
       }
@@ -532,7 +362,7 @@ const saveHackathonController= async(req,res,next)=>{
           return res.status(401).json({ message: "Unauthorized: Token not found" });
       }
       try{
-          const decoded = jwt.verify(usertoken, "vinay");
+          const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
           const userId = decoded._id;
           const user = await User.findById(userId);
           if (!user) {
@@ -554,59 +384,17 @@ const saveHackathonController= async(req,res,next)=>{
   }
 }
 
+
 const getRandomHackathonsContoller= async(req,res,next)=>{
   // here we are going to define the route to get any random No of the Hackathons
   try{
+    const pageNo=req.params?.pageNo ?? 1;
     const usertoken= req.cookies.usertoken;
     if(!usertoken){
         return res.status(401).json({ message: "Unauthorized: Token not found" });
     }
     try{
-        const decoded = jwt.verify(usertoken, "vinay");
-        const userId = decoded._id;
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        } else if (user.blocked) {
-            return res.status(405).json({ message: "Your Account is blocked" });
-        }
-        // here we are going to fetch the new no of the newLength of the data 
-        const hackathons=await Hackathon.find({}).limit(20);
-        if(!hackathons && hackathons.length==0){
-            return res.status(401).json({"message": "No Hackathons Found"});
-        }
-        // so we used to find out the first 20 hackathons and now we need to return the 10 random Hackathons
-        for (let i = hackathons.length - 1; i > 0; i--) {
-          // Pick a random index
-          const j = Math.floor(Math.random() * (i + 1));
-      
-          // Swap the current element with the random element
-          [hackathons[i], hackathons[j]] = [hackathons[j], hackathons[i]];
-        }
-        const firstTenHackathons= hackathons.slice(0,10);
-      
-        return res.status(200).json({"message": "Hackathons Fetched Successfully", data: firstTenHackathons, length:10}); 
-    }
-    catch(err){
-        return res.status(500).json({"message": "Internal Server Error"})
-    }
-}
-catch(err){
-    return res.status(500).json({"message": "Internal Server Error"})
-}
-}
-
-
-const getNextRandomHackathonsContoller= async(req,res,next)=>{
-  // here we are going to define the route to get any random No of the Hackathons
-  try{
-    const {pageNo}=req.params;
-    const usertoken= req.cookies.usertoken;
-    if(!usertoken){
-        return res.status(401).json({ message: "Unauthorized: Token not found" });
-    }
-    try{
-        const decoded = jwt.verify(usertoken, "vinay");
+        const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
         const userId = decoded._id;
         const user = await User.findById(userId);
         if (!user) {
@@ -647,18 +435,11 @@ module.exports= {
    getAllHackathonsController,
    getParticularHackathonController,
    getHackathonsByDateController,
-   getUserPreferenceHackathonsController,
    deleteHackathonController,
 
    updateHacakathonController,
-   getLimitHackathonController,
-   getNextHackathonsController,
-   getNextHackathonByDateController,
-
-   getNextUserPrefHackathonsController,
    savedHackathonsController,
    saveHackathonController,
-
+   getUserPrefHackathonsController,
    getRandomHackathonsContoller,
-   getNextRandomHackathonsContoller
   };

@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const Fest= require("../../models/Fest");
 const User = require('../../models/User');
 const Blogger= require("../../models/Blogger");
+const dotenv= require('dotenv');
+dotenv.config();
 
 const postFestController= async()=>{
     try{
@@ -20,7 +22,7 @@ const postFestController= async()=>{
                 return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
               }     
               try{
-                const decoded= jwt.verify(usertoken, "vinay");
+                const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
                 const userId= decoded._id;
                 // now we are going to find out the details of teh user here extra like is he a valid user or not
                 const user=await User.findById(userId);
@@ -69,8 +71,10 @@ const postFestController= async()=>{
 
 const getAllFestsController = async () => {
     try {
+      const pageNo= req.params?.pageNo ?? 1;
+      const skipLength= (pageNo-1)*10;
       // Fetch all fests (consider filtering and sorting if needed)
-      const allFests = await Fest.find({});
+      const allFests = await Fest.find({}).skip(skipLength).limit(10);
       const length= allFests.length;
       if (!allFests && allFests.length === 0) {
         return res.status(204).json({ message: "No fests found" });
@@ -86,19 +90,18 @@ const getAllFestsController = async () => {
 const getFestsByLocationController = async () => {
     try {
       const { location } = req.body;
-  
+      const pageNo= req.params?.pageNo ?? 1;
+      const skipLength= (pageNo-1)*10;
       // Validate location presence and format (optional)
       if (!location) {
         return res.status(400).json({ message: "Missing location parameter" });
       }
   
       // Fetch fests based on location (consider case-insensitive search)
-      const allFests = await Fest.find({ location: { $regex: new RegExp(location, 'i') } }); // Case-insensitive search
-  
+      const allFests = await Fest.find({ location: { $regex: new RegExp(location, 'i') } }).skip(skipLength).limit(10); // Case-insensitive search
       if (!allFests || allFests.length === 0) {
         return res.status(204).json({ message: "No fests found in that location" });
       }
-  
       return res.status(200).json({ message: "Fests found successfully", data: allFests });
     } catch (err) {
       console.error(err);
@@ -107,86 +110,17 @@ const getFestsByLocationController = async () => {
   };
 
 
- const getLimitFestsController= async(req,res,next)=>{
-  try{
-    // here we are going to define the route to save the Projects for the users
-    const usertoken= req.cookies.usertoken;
-    if(!usertoken){
-        return res.status(401).json({ message: "Unauthorized: Token not found" });
-    }
-    try{
-        const decoded = jwt.verify(usertoken, "vinay");
-        const userId = decoded._id;
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        } else if (user.blocked) {
-            return res.status(405).json({ message: "Your Account is blocked" });
-        }
-        // we are going to define teh code to retrive the data from the api
-        const fests= await Fest.find({}).limit(10);
-        if(!fests&& fests.length==0){
-            return res.status(401).json({"message": "No Fests Found"});
-        }        
-        return res.status(200).json({"message": "Fests Fetched Successfully", data: bootcamps, length: 10}); 
-    }
-    catch(err){
-        return res.status(500).json({"message": "Internal Server Error"})
-    }
-}
-catch(err){
-    return res.status(500).json({"message": "Internal Server Error"})
-}
-} 
-
-
-const getNextFestsController = async(req,res,next)=>{
-  try{
-      const usertoken= req.cookies.usertoken;
-      const {pageNo}= req.params;
-      if(!pageNo){
-          return res.status(404).json({"message":"Page not is not find"});
-      }
-      if(!usertoken){
-          return res.status(401).json({ message: "Unauthorized: Token not found" });
-      }
-      try{
-          const decoded = jwt.verify(usertoken, "vinay");
-          const userId = decoded._id;
-          const user = await User.findById(userId);
-          if (!user) {
-              return res.status(404).json({ message: "User not found" });
-          } else if (user.blocked) {
-              return res.status(405).json({ message: "Your Account is blocked" });
-          }
-          const skipLength= (pageNo-1)*10;
-          // here we are going to fetch the new no of the newLength of the data 
-          const fests=await Fest.find({}).skip(skipLength).limit(10);
-          if(!fests && fests.length==0){
-              return res.status(401).json({"message": "No Fests Found"});
-          }
-          return res.status(200).json({"message": "Fests Fetched Successfully", data: bootcamps, length:10}); 
-      }
-      catch(err){
-          return res.status(500).json({"message": "Internal Server Error"})
-      }
-  }
-  catch(err){
-      return res.status(500).json({"message": "Internal Server Error"})
-  }
-}  
-  
 
   const getParticularFestController = async (req,res,next) => {
     try {
-      const { id } = req.params; // Assuming ID is passed in request params
+      const { festId } = req.params; // Assuming ID is passed in request params
   
       // Validate ID presence and format (optional)
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!festId || !mongoose.Types.ObjectId.isValid(festId)) {
         return res.status(400).json({ message: "Invalid Fest ID" });
       }
   
-      const fest = await Fest.findById(id);
+      const fest = await Fest.findById(festId);
       if (!fest) {
         return res.status(404).json({ message: "Fest not found" });
       }
@@ -207,7 +141,8 @@ const getNextFestsController = async(req,res,next)=>{
 const getFestsByDateController = async () => {
     try {
       const { dateOfPosting, lastDateToApply, both } = req.body;
-  
+      const pageNo= req.params?.pageNo ?? 1;
+      const skipLength= (pageNo-1)*10;
       let pipeline = []; // Initialize empty pipeline
       let sortCriteria = {}; // Initialize empty sort criteria
   
@@ -223,7 +158,8 @@ const getFestsByDateController = async () => {
         return res.status(400).json({ message: "Invalid request parameters. Specify dateOfPosting, lastDateToApply, or both." });
       }
   
-      pipeline.push({ $match: {} }); // Match all documents by default
+      pipeline.push({ $match: {} });
+      pipeline.push({$skip: skipLength}); // Match all documents by default
       pipeline.push({$limit: 10});
       pipeline.push({ $sort: sortCriteria });
   
@@ -242,56 +178,10 @@ const getFestsByDateController = async () => {
   };
 
 
-const getNextBootcampsByDateController= async(req,res,next)=>{
-  // here we are going to get the nextProjects Uploaded By the Date
-  try {
-    const { dateOfPosting, lastDateToApply, both } = req.body;
-    const {pageNo}= req.params;
-    if(!pageNo){
-        return res.status(404).json({"message": "Internal Server Error"});
-    }
-    let pipeline = []; // Initialize empty pipeline
-    let sortCriteria = {}; // Initialize empty sort criteria
-
-    // Validate and build pipeline based on request parameters
-    if (dateOfPosting) {
-      sortCriteria = { dateOfPosting: -1 }; // Sort by dateOfPosting descending
-    } else if (lastDateToApply) {
-      sortCriteria = { lastDateToApply: 1 }; // Sort by lastDateToApply ascending
-    } else if (both) {
-      // Handle both criteria: sort by lastDateToApply ascending, then dateOfPosting descending
-      sortCriteria = { lastDateToApply: 1, dateOfPosting: -1 };
-    } else {
-      return res.status(400).json({ message: "Invalid request parameters. Specify dateOfPosting, lastDateToApply, or both." });
-    }
-
-    pipeline.push({ $match: {} }); // Match all documents by default
-    pipeline.push({ $skip: skipLength});
-    pipeline.push({$limit: 10});
-    pipeline.push({ $sort: sortCriteria });
-
-    // Fetch bootcamps using aggregation pipeline
-    const fest = await Fest.aggregate(pipeline);
-
-    if (!fest || fest.length === 0) {
-      return res.status(204).json({ message: "No Fests found" });
-    }
-
-    return res.status(200).json({ message: "Fests fetched successfully", data: fest });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Internal Server Error" });
-    }
-}
-
-  
 const getUserPreferenceFestsController = async () => {
     try {
       const {postedBy,eventname,mode ,city, entryFee, lastDateToApply, hashtags,organisedUnder, organiser } = req.body;
-      const {pageNo}= req.params;
-      let pipeline = [
-        { $match: {} } // Match all documents by default
-      ];
+      const {pageNo}= req.params?.pageNo ?? 1;
       let filters = []; // Initialize an empty filters array
   
       // Build filters based on user preferences
@@ -352,7 +242,7 @@ const getUserPreferenceFestsController = async () => {
       if(!usertoken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, "vinay");
+      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -406,7 +296,7 @@ const getUserPreferenceFestsController = async () => {
       if(!usertoken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, "vinay");
+      const decoded= jwt.verify(usertoken,process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -447,7 +337,7 @@ const getUserPreferenceFestsController = async () => {
         }
         try {
             // we are going to find out the details of the user
-            const decoded = jwt.verify(usertoken, "vinay");
+            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -480,7 +370,7 @@ const getUserPreferenceFestsController = async () => {
   const saveFestController= async(req,res,next)=>{
     try{
         // here we are going to define the route to save the Projects for the users
-        const {festId}= req.body;
+        const {festId}= req.params;
         if(!festId){
             return res.status(404).json({"message": "Fest id is missing"})
         }
@@ -489,7 +379,7 @@ const getUserPreferenceFestsController = async () => {
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try{
-            const decoded = jwt.verify(usertoken, "vinay");
+            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -514,13 +404,13 @@ const getUserPreferenceFestsController = async () => {
 const getRandomFestsContoller= async(req,res,next)=>{
     // here we are going to define the route to get any random No of the Hackathons
     try{
-      const {pageNo}= req.params;
+      const {pageNo}= req.params?.pageNo ?? 1;
       const usertoken= req.cookies.usertoken;
       if(!usertoken){
           return res.status(401).json({ message: "Unauthorized: Token not found" });
       }
       try{
-          const decoded = jwt.verify(usertoken, "vinay");
+          const decoded = jwt.verify(usertoken,process.env.USER_TOKEN);
           const userId = decoded._id;
           const user = await User.findById(userId);
           if (!user) {
@@ -528,7 +418,7 @@ const getRandomFestsContoller= async(req,res,next)=>{
           } else if (user.blocked) {
               return res.status(405).json({ message: "Your Account is blocked" });
           }
-          const skipLength= (pageNo-1)*10;
+          const skipLength= (pageNo-1)*20;
           // here we are going to fetch the new no of the newLength of the data 
           const fest=await Fest.find({}).skip(skipLength).limit(20);
           if(!fest && fest.length==0){
@@ -568,8 +458,6 @@ module.exports= {
   savedFestController
   ,getFestsByDateController,
    getFestsByLocationController,
-    getLimitFestsController,
-    getNextFestsController,
     getRandomFestsContoller
 // need to be defined
   };

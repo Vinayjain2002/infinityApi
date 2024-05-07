@@ -8,18 +8,19 @@ const { loginUserNotfyEmail, welcomeUserEmail, resetUserEmail } = require("../au
 const {uploadOnCloudinary}=require('../../utils/cloudinary')
 dotenv.config();
 
-// some erroor is coming while loggin the user
+// ONly the cahange of the userprofile Picture is left
+
 
 const registerUserController = async (req, res) => {
   // we need to first check the email or the phone no first
     try {
         const { username, email,mobileNo } = req.body;
-        if(username==undefined && email==undefined){
-          return res.status(404).json({"message": "Provide the email and username"})
+        if(username==undefined || email==undefined){
+          return res.status(404).json({"message": "Provide the email or username"})
         }      
-        const existingUser = await User.findOne({email: email});
+        const existingUser = await User.findOne({$or: [{username}, {email}]});
         if (existingUser) {
-            return res.status(409).json({ message: "Email already exists" }); // Use 409 for conflict
+            return res.status(409).json({ message: "Email or username already exists" }); // Use 409 for conflict
         }
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(username, saltRounds);
@@ -30,7 +31,7 @@ const registerUserController = async (req, res) => {
             password: hashedPassword,
         });
         await newUser.save();
-        const passwordtoken =jwt.sign({ _id: newUser._id },"vinayResetPassword", { expiresIn: "1d" }); // Use env variable for secret
+        const passwordtoken =jwt.sign({ _id: newUser.username},process.env.USER_PASSWORD_KEY, { expiresIn: "1d" }); // Use env variable for secret
         newUser.passwordResetToken= passwordtoken;
         await newUser.save();
         const passwordResetEmail= await passwordsetEmail(username,email,"www.google.com");
@@ -40,7 +41,7 @@ const registerUserController = async (req, res) => {
           return res.status(422).json({"message": "Unable to verify Email"})
         }
         // going to define the cookies for the again auto logging
-        const usertoken= jwt.sign({_id: newUser._id},"vinay", {expiresIn: "3d"});
+        const usertoken= jwt.sign({_id: newUser._id},process.env.USER_TOKEN, {expiresIn: "3d"});
         const welcomeuser= await welcomeUserEmail(email,username, "www.google.com");
         if(welcomeuser){
           console.log("welcome mail send to the user");
@@ -70,16 +71,13 @@ const loginUserController = async (req, res) => {
         return res.status(401).json({"message": "User does not exists"})
       }
       if(!user.blocked){
-        console.log(user.password);
-        console.log(req.body.password)
-
         const match = await bcrypt.compare(req.body.password, user.password); // Compare hashed password
           if (!match) {
             return res.status(403).json({"message": "Invalid Password"}) // Use 401 for incorrect password
           }
       
           const { password, ...data } = user._doc;
-          const usertoken = jwt.sign({ _id: user._id },"vinay", { expiresIn: "3d" }); // Use env variable for secret
+          const usertoken = jwt.sign({ _id: user._id },process.env.USER_TOKEN, { expiresIn: "3d" }); // Use env variable for secret
           res.cookie("usertoken", usertoken, { httpOnly: true }).status(200).json(data); // Set httpOnly for security
           const date = new Date();
           const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
@@ -138,7 +136,7 @@ const loginUserController = async (req, res) => {
   
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(usertoken, "vinay"); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(usertoken, process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
   
         // Fetch user data using findOne()
@@ -183,7 +181,7 @@ const loginUserController = async (req, res) => {
       }
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(usertoken, "vinay"); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(usertoken,process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
         // Fetch user data using findOne()
         const user = await User.findOne({ _id: userId });
@@ -250,23 +248,29 @@ const loginUserController = async (req, res) => {
       return res.status(500).json({ message: "Internal Server Error" }); // Generic error for unexpected issues at top level
     }  }
   
+    
   const updateUserEmailGenerator= async(req, res,next)=>{
       // here we are going to send the verification email to the user with the otp
       try {
         const usertoken= req.cookies.usertoken;
+        const {email}= req.body;
+          // we are gonna to check weather a user exists with that particular id or not
+        const user=await User.findOne({email: email});
+        if(user){
+          return res.status(409).json({"message": "This Email is Already Registered"})
+        }
         if(!usertoken){
           return res.status(429).json({"message":"Token not found"})
         }
-        console.log(usertoken, req,res);
         // Check for token presence
        const loggedInUser= await findLoggedInUser(usertoken);
+       
         if(loggedInUser.blocked){
         return res.status(405).json({
          "message": "Your Account is blocked"
         });
        }
        else if(loggedInUser){
-        const {email}= req.body;
         if(!email){
           return res.status(409).json({"message": "Please Enter the new user email"})
         }
@@ -276,12 +280,10 @@ const loginUserController = async (req, res) => {
               "message": "Email is same"
             })
           }
-
           // so the mails are not same and we are going to send a email with a token to the user
-          const emailtoken = jwt.sign({ _id:loggedInUser._id },"vinayResetEmail", { expiresIn: "1d" }); // Use env variable for secret
+          const emailtoken = jwt.sign({ _id:loggedInUser._id },process.env.EMAIL_RESET_TOKEN, { expiresIn: "1d" }); // Use env variable for secret
           loggedInUser.emailChangeToken= emailtoken;
           await loggedInUser.save();
-          console.log(loggedInUser);
           // going to send the email to the user for the email reset. url contains username, newEmail, token
           const resetEmail= await resetUserEmail(email,loggedInUser.username,"www.google.com");
           if(resetEmail){
@@ -305,42 +307,47 @@ const loginUserController = async (req, res) => {
     try {
       // Check for token presence
       const { email, emailChangeToken}= req.body;
+      const usertoken= req.cookies.usertoken;
       if (!emailChangeToken) {
         return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
       }
-  
-      // Validate token using JWT verify
-      try {
-        const decoded = jwt.verify(emailChangeToken, "vinayResetEmail"); // Replace "vinay" with your actual secret key
-        const userId = decoded._id;
-  
-        // Fetch user data using findOne()
-        const user = await User.findOne({ _id: userId });
-        if (!user) {
-          return res.status(404).json({ message: "User not found" }); // Use 404 for not found
+      if(!usertoken){
+          return res.status(429).json({"message":"User Token not found"})
         }
-        else if(user.blocked){
-          return res.status(405).json({
-            "message": "Your Account is blocked"
-          })
+        // Check for token presence
+       const loggedInUser= await findLoggedInUser(usertoken);
+       
+        if(loggedInUser.blocked){
+        return res.status(405).json({
+         "message": "Your Account is blocked"
+        });
+       }
+          else if(loggedInUser){
+              // Verify token and get user// Validate token using JWT verify
+            const decoded = jwt.verify(emailChangeToken, process.env.EMAIL_RESET_TOKEN); // Replace "vinay" with your actual secret key
+            const userId = decoded._id;
+      
+            // Fetch user data using findOne()
+            const user = await User.findById(userId);
+            if (!user) {
+              return res.status(404).json({ message: "User not found" }); // Use 404 for not found
+            }
+            else if(user.blocked){
+              return res.status(405).json({
+                "message": "Your Account is blocked"
+              })
+            }
+            // so we had verified the newemail
+            user.email= email;
+            user.emailChangeToken="";
+            await user.save();
+            return res.status(200).json("Email Updated Successfully")
         }
-        // so we had verified the newemail
-        user.email= email;
-        user.emailChangeToken="";
-        user.save();
-        return res.status(200).json("Email Updated Successfully")
-      } catch (err) {
-        console.error("Error verifying token or fetching user:", err); // Log specific error details for debugging
-        // Handle specific errors (e.g., token expiration, database errors)
-        if (err.name === 'JsonWebTokenError') {
-          return res.status(401).json({ message: "Unauthorized: Invalid token" });
-        } else if (err.name === 'CastError') {
-          return res.status(400).json({ message: "Invalid user ID" });
-        } else {
-          return res.status(500).json({ message: "Internal Server Error" }); // Generic error for unexpected issues
-        }
-      }
-    } catch (err) {
+       else{
+        return res.status(409).json({"message": "Internal Server Error, login again"});
+       }
+      } 
+     catch (err) {
       console.error("Unhandled error in refetchUserController:", err);
       return res.status(500).json({ message: "Internal Server Error" }); // Generic error for unexpected issues at top level
     }
@@ -405,39 +412,62 @@ const loginUserController = async (req, res) => {
       }
   }
 
-  const avaibleUserUsernames= async(req, res,next)=>{
-      
+  const avaibleUserUsernamesController= async(req, res,next)=>{
+      try{
+        const username = req.body.username; // Extract username from request body
+
+        // Validate username format (optional but recommended)
+        if (!username || !/^[a-zA-Z0-9._]+$/.test(username)) {
+          return res.status(400).json({ message: 'Invalid username format. Please use alphanumeric characters, periods (.), and underscores (_).' });
+        }    
+        // Check if username already exists (case-insensitive)
+        const existingUser = await User.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
+    
+        if (existingUser) {
+          // Username already taken, try suggesting similar usernames
+          const suggestions = await suggestSimilarUsernames(username);
+          return res.status(409).json({ message: 'Username already taken.',suggestions: suggestions });
+        }
+    
+        // Username is available, return success
+        return res.status(200).json({ available: true , "message": "User name is aviable"});
+      }
+      catch(err){
+        //we are going to define the aviable usernames for the user
+        return res.status(500).json({"message": "Internal Server Error"})
+      }
   }
 
   const updateUserUsernamesController= async(req,res,next)=>{
     try {
       // Check for token presence
       const usertoken= req.cookies.usertoken;
+      const {username}= req.body;
       if(!usertoken){
         return res.status(408).json({
           "message": "Please login"
         });
+      }
+      if(!username){
+        return res.status(490).json({
+          "message": "Please provide the new username"
+        })
       }
       const loggedInUser= await findLoggedInUser(usertoken);
       if(loggedInUser.blocked){
         return res.status(429).json({"message": "Your account is blocked"})
       }
       else if(loggedInUser){
-        const {username}= req.body;
-        if(!username){
-          return res.status(490).json({
-            "message": "Please provide the new username"
-          })
-        }
-        console.log(username);
         // here we are going to check weather the username is aviable or not
-        const existingUser= User.findOne({username: username});
+        const existingUser=await User.findOne({username: username});
         if(existingUser){
+          // we are going to get the suggestions of the avaible Usernames that are avaible
+          const suggestions = await suggestSimilarUsernames(username);
           return res.status(493).json({"message": "Username Already Exists"});
         }
         loggedInUser.username= username;
-        loggedInUser.save();
-        res.status(200).json({"message": "Username Updated Succesfully"});
+       await loggedInUser.save();
+        return res.status(200).json({"message": "Username Updated Succesfully"});
       }else{
         return;
       }
@@ -449,40 +479,58 @@ const loginUserController = async (req, res) => {
 
   const resetUserPassword= async(req,res,next)=>{
  // here we are going to send the forgot password to the users email 
- try {
-  // 1. Validate User Input
-  const { email, username } = req.body;
-  if (!email && !username) {
-    return res.status(429).json({ error: "Please provide either email or username." });
+      try {
+        // 1. Validate User Input
+        const { email, username } = req.body;
+        if (!email && !username) {
+          return res.status(429).json({ error: "Please provide either email or username." });
+        }
+
+        // 2. Find User Based on Email or Username
+        let user;
+        if (email) {
+          user = await User.findOne({ email });
+        } else {
+          user = await User.findOne({ username });
+        }
+        if (!user) {
+          return res.status(404).json({ message: "No user found." });
+        }
+
+        const passwordtoken = jwt.sign({ _id: user._id },process.env.PASSWORD_RESET_TOKEN, { expiresIn: "1d" }); // Use env variable for secret
+        user.passwordResetToken= passwordtoken;
+        await user.save();
+
+        // 5. Send Password Reset Email (replace with your email sending logic)
+        const mailResult=await passwordsetEmail(user.username,user.email,process.ev.PASSWORD_RESET_URL) // Assuming sendPasswordResetEmail function exists
+        if(mailResult){
+          return res.status(200).json({ message: "Password reset email sent successfully." });
+        }
+        else{
+          return res.status(430).json({"message": "Some erro while sending the email"})
+        }
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "An error occurred. Please try again later." });
+      }
   }
 
-  // 2. Find User Based on Email or Username
-  let user;
-  if (email) {
-    user = await User.findOne({ email });
-  } else {
-    user = await User.findOne({ username });
-  }
-  if (!user) {
-    return res.status(404).json({ message: "No user found." });
-  }
-
-  const passwordtoken = jwt.sign({ _id: user._id },"vinayResetPassword", { expiresIn: "1d" }); // Use env variable for secret
-  user.passwordResetToken= passwordtoken;
-  await user.save();
-
-  // 5. Send Password Reset Email (replace with your email sending logic)
-  const mailResult=await passwordsetEmail(user.username,user.email, "www.google.com") // Assuming sendPasswordResetEmail function exists
-  if(mailResult){
-    return res.status(200).json({ message: "Password reset email sent successfully." });
-  }
-  else{
-    return res.status(430).json({"message": "Some erro while sending the email"})
-  }
-} catch (error) {
-  console.error(error);
-  return res.status(500).json({ error: "An error occurred. Please try again later." });
-}
+  const findUserByPrefixNameController = async( req, res,next)=>{
+    try {
+      const {username} = req.body;  // Adjust based on how you pass the prefix
+      console.log(username)
+      const user = await User.find({
+        username: { $regex: `^${username}`, $options: 'i' }
+      }).limit(10);
+  
+      if (!user.length && !user) {
+        return res.json({ message: 'No User found' });
+      }
+      return res.status(200).json({"message": "User found","data": user}); // Send the list of matching bloggers
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Internal server error' });
+    }
   }
 
   const updateUserPasswordController=async(req, res,next)=>{
@@ -495,11 +543,13 @@ const loginUserController = async (req, res) => {
   
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(passwordResetToken, "vinayResetPassword"); // Replace "vinay" with your actual secret key
+        
+        const decoded = jwt.verify(passwordResetToken,process.env.PASSWORD_RESET_TOKEN); // Replace "vinay" with your actual secret key
+        console.log("hello")
         const userId = decoded._id;
   
         // Fetch user data using findOne()
-        const user = await User.findOne({ _id: userId });
+        const user = await User.findById(userId);
         if (!user) {
           return res.status(404).json({ message: "User not found" }); // Use 404 for not found
         }
@@ -514,7 +564,7 @@ const loginUserController = async (req, res) => {
 
         user.password= hashedPassword;
         user.passwordResetToken="";
-        user.save();
+       await  user.save();
         return res.status(200).json("Password Updated Successfully")
       } catch (err) {
         console.error("Error verifying token or fetching user:", err); // Log specific error details for debugging
@@ -536,6 +586,7 @@ const loginUserController = async (req, res) => {
   const followUserController = async (req, res, next) => {
     try {
       const usertoken = req.cookies.usertoken;
+      const { userId } = req.body;
       if (!usertoken) {
         return res.status(405).json({ message: "Please First login in your account" });
       }
@@ -553,13 +604,12 @@ const loginUserController = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
       }
 
-      const { userId } = req.body;
 
       if (!userId) {
         return res.status(400).json({ message: "Missing user ID to follow" });
       }
 
-      const userToFollow = await User.findOne({ _id: userId });
+      const userToFollow = await User.findById(userId);
       if (!userToFollow) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -567,7 +617,6 @@ const loginUserController = async (req, res) => {
       if (loggedInUser.following.includes(userId)) {
         return res.status(400).json({ message: "Already included in the following list" });
       }
-
       if (loggedInUser.blockedList.includes(userId)) {
         return res.status(415).json({ message: "Unblock user first" });
       }
@@ -611,7 +660,7 @@ const loginUserController = async (req, res) => {
       if (!userId) {
         return res.status(400).json({ message: "Missing user ID to unfollow" });
       }
-      const unfollowUser= await User.findOne({_id: userId});
+      const unfollowUser= await User.findById(userId);
       if(!unfollowUser){
         return res.status(408).json({
           "message": "Unfollow user does not exists"
@@ -706,13 +755,12 @@ const loginUserController = async (req, res) => {
   //todo we could add the functionality to send the reset password to the users phone no
 
   const findLoggedInUser= async(usertoken)=>{
-    console.log(usertoken);
       if (!usertoken) {
          return null;
       }
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(usertoken, "vinay"); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(usertoken, process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
   
         // Fetch user data using findOne()
@@ -737,13 +785,38 @@ const loginUserController = async (req, res) => {
       }
   }
 
-
+  const suggestSimilarUsernames = async(username) =>{
+    const suggestions = [];
+  
+    // Try appending digits (0-9)
+    for (let i = 0; i < 10; i++) {
+      const suggestedUsername = username + i;
+      const existing = await User.findOne({ username: suggestedUsername });
+      if (!existing) {
+        suggestions.push(suggestedUsername);
+      }
+    }
+  
+    // If no digits available, try appending an underscore and a letter (a-z)
+    if (suggestions.length === 0) {
+      for (let i = 0; i < 26; i++) {
+        const suggestedUsername = username + '_' + String.fromCharCode(97 + i); // 97 is ASCII code for 'a'
+        const existing = await User.findOne({ username: suggestedUsername });
+        if (!existing) {
+          suggestions.push(suggestedUsername);
+          break; // Stop after finding the first available username
+        }
+      }
+    }
+  
+    return suggestions;
+  }
   module.exports= {
     registerUserController,
      loginUserController,
      logoutUserController,
 
-     avaibleUserUsernames,
+     avaibleUserUsernamesController,
      updateUserPicture,
      updateUserEmailController,
 

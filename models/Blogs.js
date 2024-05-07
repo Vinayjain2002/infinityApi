@@ -2,7 +2,8 @@ const mongoose= require("mongoose")
 const blogSchema= new mongoose.Schema({
     blogTopic: {
         type: String,
-        required: true
+        required: true,
+        lowercase:true
     },
     blogContent: {
         type: String,

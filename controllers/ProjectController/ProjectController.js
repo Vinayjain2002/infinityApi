@@ -4,6 +4,9 @@ const express= require("express");
 const Project = require("../../models/Project")
 const User= require('../../models/User')
 const jwt= require("jsonwebtoken");
+const dotenv= require("dotenv")
+dotenv.config();
+
 const UploadProjectController= async(req,res)=>{
     try{
         const {projectName, description,gitRepo,privateProject,projectImage,techStack, noOfPages,projectOverView,...data}= req.body;
@@ -20,10 +23,10 @@ const UploadProjectController= async(req,res)=>{
             return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
         }
         try{
-            const decoded= jwt.verify(usertoken, "vinay");
+            const decoded= jwt.verify(usertoken,process.env.USER_TOKEN );
             const userId= decoded._id;
             // now we are going to find out the details of teh user here extra like is he a valid user or not
-            const user= User.findById(userId);
+            const user=await User.findById(userId);
             if(!user){
                 // so the user id not found
                 return res.status(404).json({ message: "User not found" }); // Use 404 for not found
@@ -48,16 +51,20 @@ const UploadProjectController= async(req,res)=>{
                 ...data
             });
             await newproject.save();
-            // user.projectsUploaded.push(newproject._id);
-            // await user.save();
-
-            return res.status(200).json({"message": "Project Uploaded Successfully"});        
+            if(!privateProject){
+                const welcomeuser= await ProjectUploaderWelcome(user.username, user.email);
+                if(welcomeuser){
+                    return res.status(200).json({"message": "Project Uploaded Successfully and Welcome Mail send"});        
+              }
+                else{
+                    return res.status(200).json({"message": "Project Uploaded Successfully and Welcome Mail not send"});        
+                }
+            }
           }  
           catch(err){
             console.log(err);
             return res.status(410).json({"message": "Internal Server error"})
           }
-        
     }
     catch(err){
         return res.status(500).json({
@@ -67,23 +74,12 @@ const UploadProjectController= async(req,res)=>{
 }
 
 
-const getAllProjectsController= async(req,res,next)=>{
-    try{
-        const allProject= await Project.find({});
-        if(!allProject && allProject.length==0){
-            return res.status(204).json({ message: "No projects found" });
-        }
-        return res.status(200).json({ message: "Successfully fetched all Projects", data: allProject });
-    }
-    catch(err){
-        return res.status(500).json({"message": "Internal Server Error"});
-    }
-}
 
 
 const getUserPrefProjectsController= async(req,res,next)=>{
     try{
         const {projectName,projectLevel,techStack, projectAcheivements,tags}= req.body;
+        const pageNo= req.params;
         let filters= [];
         // so if the length is not defined it will fetch the first 10
         if(projectName){
@@ -104,8 +100,8 @@ const getUserPrefProjectsController= async(req,res,next)=>{
             filters.push({techStack: {$in: techStack}});
         }
         // going to fetch the data based on the filters
-        const findProjects= await Project.find({$and: filters}).limit(10);
-
+        const skipLength= (pageNo-1)*10;
+        const findProjects= await Project.find({$and: filters}).skip(skipLength).limit(10);
         if(!findProjects || findProjects.length===0){
             return res.status(204).json({"message": "no Projects Find"})
         }
@@ -121,54 +117,13 @@ const getUserPrefProjectsController= async(req,res,next)=>{
     }
 }
 
-
-const getNextUserPrefProjectsController= async(req,res,next)=>{
-    try{
-        const {projectName,projectLevel,techStack, projectAcheivements,tags, pageNo}= req.body;
-        if(!pageNo){
-            return res.status(401).json({"message": "Page no is missing"})
-        }
-        let filters= [];
-        if(projectName){
-            filters.push({projectName});
-        }
-        if(projectLevel){
-            filters.push({projectLevel});
-        }
-        if (projectAcheivements && projectAcheivements.length > 0) {
-            filters.push({ projectAcheivements: { $in: projectAcheivements } }); // Match projects with at least one achievement from the list
-        }
-      
-          // Handle tags (array of strings):
-        if (tags && tags.length > 0) {
-            filters.push({ tags: { $in: tags } }); // Match projects with at least one tag from the list
-        }
-        if(techStack && techStack.length>0){
-            filters.push({techStack: {$in: techStack}});
-        }
-        // going to fetch the data based on the filters
-        const length= (pageNo-1)*10;
-        const findProjects= await Project.find({$and: filters}).skip(length).limit(10);
-        if(!findProjects || findProjects.length===0){
-            return res.status(204).json({"message": "no Projects Find"})
-        }
-        return res.status(200).json({
-            message: "Projects Ftched Succesfully",
-            projects: findProjects
-        });
-    }
-    catch(err){
-        return res.status(500).json({
-            "message": "Internal Server Errror"
-        })
-    }
-}
 
 const getSpecificProjectController=async(req,res,next)=>{
     try{
         // we are going to find out the Specific Projects for the user
-        const {id}= req.body;
-        if(!id){
+        const {projectId}= req.params;
+
+        if(!projectId){
             return res.status(400).json({
                 "message": "Missing Project Id"
             });
@@ -187,7 +142,11 @@ const getSpecificProjectController=async(req,res,next)=>{
 // we are going to define the routes like the change the Project
 const changeProjectController = async (req, res, next) => {
     try {
-        const { projectId, updatedData } = req.body;
+        const {projectId}= req.parmas;
+        if(!projectId){
+            return res.status(400).json({'messsage': "Project iD is not defined"});
+        }
+        const {updatedData } = req.body;
         // we are going to change the Project Details
         const usertoken = req.cookies.usertoken;
         if (!usertoken) {
@@ -195,7 +154,7 @@ const changeProjectController = async (req, res, next) => {
         }
         try {
             // we are going to find out the details of the user
-            const decoded = jwt.verify(usertoken, "vinay");
+            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -229,7 +188,7 @@ const changeProjectController = async (req, res, next) => {
 const deleteProjectController= async(req,res,next)=>{
     try{
         // going to delete the Project Details
-        const {projectId}= req.body;
+        const {projectId}= req.params;
 
         if(!projectId){
             return res.status(401).json({"message": "Project Id is missing"})
@@ -239,7 +198,7 @@ const deleteProjectController= async(req,res,next)=>{
         if(!usertoken){
             return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
         }
-        const decoded= jwt.verify(usertoken, "vinay");
+        const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
         const userId= decoded._id;
                 // now we are going to find out the details of teh user here extra like is he a valid user or not
         const user=await User.findById(userId);
@@ -281,6 +240,7 @@ const deleteProjectController= async(req,res,next)=>{
 
 const savedProjectsController = async (req, res, next) => {
     try {
+
         // here we are going to get the data that is saved by the user
         const usertoken = req.cookies.usertoken;
         if (!usertoken) {
@@ -288,7 +248,7 @@ const savedProjectsController = async (req, res, next) => {
         }
         try {
             // we are going to find out the details of the user
-            const decoded = jwt.verify(usertoken, "vinay");
+            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -330,7 +290,7 @@ const saveProjectController= async(req,res,next)=>{
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try{
-            const decoded = jwt.verify(usertoken, "vinay");
+            const decoded = jwt.verify(usertoken,process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -352,18 +312,16 @@ const saveProjectController= async(req,res,next)=>{
     }
 }
 
-const getNextProjectsController = async(req,res,next)=>{
+const getProjectsController = async(req,res,next)=>{
     try{
         const usertoken= req.cookies.usertoken;
-        const {pageNo}= req.body;
-        if(!pageNo){
-            return res.status(404).json({"message":"Page not is not find"});
-        }
+        const pageNo= req.params?.pageNo ?? 1;
+        const skipLength= (pageNo-1)*10;
         if(!usertoken){
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try{
-            const decoded = jwt.verify(usertoken, "vinay");
+            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -388,48 +346,18 @@ const getNextProjectsController = async(req,res,next)=>{
     }
 }  
 
-const getLimitProjectController= async(req,res,next)=>{
-    try{
-        // here we are going to define the route to save the Projects for the users
-        const usertoken= req.cookies.usertoken;
-        if(!usertoken){
-            return res.status(401).json({ message: "Unauthorized: Token not found" });
-        }
-        try{
-            const decoded = jwt.verify(usertoken, "vinay");
-            const userId = decoded._id;
-            const user = await User.findById(userId);
-            if (!user) {
-                return res.status(404).json({ message: "User not found" });
-            } else if (user.blocked) {
-                return res.status(405).json({ message: "Your Account is blocked" });
-            }
-            // we are going to define teh code to retrive the data from the api
-            const projects= await Project.find({}).limit(10);
-            if(!projects&& projects.length==0){
-                return res.status(401).json({"message": "No Project Found"});
-            }        
-            return res.status(200).json({"message": "Projects Fetched Successfully", data: projects}); 
-        }
-        catch(err){
-            return res.status(500).json({"message": "Internal Server Error"})
-        }
-    }
-    catch(err){
-        return res.status(500).json({"message": "Internal Server Error"})
-    }
-}
-
  
 const getProjectsByDateController = async () => {
     try {
-  
+
+        const pageNo= req.params?.pageNo;
+        const skipLength= (pageNo-1)*10;
       let pipeline = []; // Initialize empty pipeline
       let sortCriteria = {}; // Initialize empty sort criteria
-  
       sortCriteria = { projectUploadedOn: -1 };
   
       pipeline.push({ $match: {} }); // Match all documents by default
+      pipeline.push({$skip: skipLength})
       pipeline.push({ $limit: 10 });
       pipeline.push({ $sort: sortCriteria });
   
@@ -440,47 +368,15 @@ const getProjectsByDateController = async () => {
         return res.status(204).json({ message: "No Projects found based on your criteria" });
       }
   
-      return res.status(200).json({ message: "Projects fetched successfully", data: hackathons });
+      return res.status(200).json({ message: "Projects fetched successfully", data: projects });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ message: "Internal Server Error" });
     }
   };
 
-const getNextProjectByDateController= async(req,res,next)=>{
-    // here we are going to get the nextProjects Uploaded By the Date
-    try {
-        const {pageNo}= req.body;
-        if(!pageNo){
-            return res.status(404).json({"message": "Internal Server Error"});
-        }
-        let pipeline = []; // Initialize empty pipeline
-        let sortCriteria = {}; // Initialize empty sort criteria
-        const skipLength= (pageNo-1)*10;
-        sortCriteria = { projectUploadedOn: -1 };
-    
-        pipeline.push({ $match: {} }); // Match all documents by default
-        pipeline.push({ $skip: skipLength})
-        pipeline.push({ $limit: 10 });
-        pipeline.push({ $sort: sortCriteria });
-    
-        // Fetch hackathons using aggregation pipeline
-        const projects = await Project.aggregate(pipeline);
-    
-        if (!projects || projects.length === 0) {
-          return res.status(204).json({ message: "No Projects found based on your criteria" });
-        }
-    
-        return res.status(200).json({ message: "Projects fetched successfully", data: hackathons });
-      } catch (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Internal Server Error" });
-      }
-  }
-  
 module.exports= {
     UploadProjectController,
-    getAllProjectsController,
     getUserPrefProjectsController
     ,deleteProjectController,
     
@@ -488,11 +384,6 @@ module.exports= {
     getSpecificProjectController, 
     savedProjectsController,
     saveProjectController,
-     getLimitProjectController,
-    getNextProjectsController,
-    getNextUserPrefProjectsController,
-
-    // need to define the routes for those and need to be tested
-    getNextProjectByDateController,
+    getProjectsController,
     getProjectsByDateController
 };

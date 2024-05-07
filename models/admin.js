@@ -1,6 +1,24 @@
 const mongoose= require("mongoose")
 
 const adminSchema= mongoose.Schema({
+    deletedAdminAccount: {
+        type: Boolean,
+        default: false
+    },
+    adminname: {
+        type: String,
+        trim: true,
+        required: true,
+        lowercase: true,
+        unique: true
+    },
+    adminemail: {
+        type: String,
+        required: true,
+        lowercase: true,
+        trim: true,
+        unique: true
+    },
     accessAppliedFor: [
         {
             type: String
@@ -9,7 +27,7 @@ const adminSchema= mongoose.Schema({
     adminProfilePicture: {
         type: String
     },
-    adminCoverPictre: {
+    adminCoverPicture: {
         type: String
     },
     adminPasswordToken: {
@@ -33,22 +51,6 @@ const adminSchema= mongoose.Schema({
     createOtherAdmin: {
         type: Boolean,
         default: false,
-    },
-    adminname: {
-        type: String,
-        trim: true,
-        lowercase: true
-    },
-    adminauthenticated: {
-        type: Boolean,
-        default: false
-    },
-    adminemail: {
-        type: String,
-        required: true,
-        lowercase: true,
-        trim: true,
-        unique: true
     },
     adminmobileno: {
         type: Number,
@@ -74,7 +76,7 @@ const adminSchema= mongoose.Schema({
         type: Boolean,
         default: false
     },
-    courseAccess: {
+    videoAccess: {
         type: Boolean,
         default: false
     },

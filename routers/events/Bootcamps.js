@@ -1,24 +1,19 @@
 const mongoose= require("mongoose");
 const express= require("express");
 const router= express.Router();
-const {postBootCampController, getAllBootcampsController, getParticularBootcampController, getBootCampsByDateController, userPreferenceBootcampController, getNextUserPrefBootcampsController, deleteBootCampController, updateBootCampController, getLimitBootcampsController, getNextBootcampsByDateController, getNextBootcampsController, savedBootcampController, saveBootcampController, getRandomBootcampsContoller, getNextRandomBootcampsContoller} =require('../../controllers/EventsController/BootcampsController')
+const {postBootCampController, getAllBootcampsController, getParticularBootcampController, getBootCampsByDateController,  deleteBootCampController, updateBootCampController,  savedBootcampController, saveBootcampController, getRandomBootcampsContoller, getUserPrefBootcampsController} =require('../../controllers/EventsController/BootcampsController')
 // now we are going to define the endpoints for the accessing the Bootcamps data
-module.exports= router.post("/events/postBootcamp", postBootCampController);
-module.exports= router.get("/events/allBootcamp", getAllBootcampsController);
-module.exports= router.get("/events/bootcamp/:id", getParticularBootcampController);
-module.exports= router.get("/events/bootcampByDate",getBootCampsByDateController);
-module.exports= router.get("events/userPrefBootcamp",userPreferenceBootcampController);
 
-module.exports= router.get("/events/userPrefBootcamp/:pageNo",getNextUserPrefBootcampsController);
-module.exports= router.delete("/events/deleteBootcamps/:bootcampId", deleteBootCampController);
+module.exports= router.post("/post", postBootCampController);
+module.exports= router.get("/detail/:pageNo", getAllBootcampsController);
+module.exports= router.get("/specific/:id", getParticularBootcampController);
+module.exports= router.get("/date/:pageNo",getBootCampsByDateController);
+module.exports= router.get("/userPref/:pageNo",getUserPrefBootcampsController);
 
-module.exports= router.put("/events/updateBootcamp/:bootcampId", updateBootCampController);
-module.exports= router.get("/events/getBootcamp", getLimitBootcampsController);
-module.exports= router.get("/events/getBootcamp/:pageNo", getNextBootcampsController);
+module.exports= router.delete("/delete/:bootcampId", deleteBootCampController);
+module.exports= router.put("/update/:bootcampId", updateBootCampController);
 
-module.exports= router.get("/events/bootcampsByDate/:pageNo", getNextBootcampsByDateController);
-module.exports= router.get("/events/savedBootcamp", savedBootcampController);
-module.exports= router.put("/events/saveBootcamp", saveBootcampController);
+module.exports= router.get("/saved", savedBootcampController);
+module.exports= router.put("/save/:bootcampId", saveBootcampController);
 
-module.exports= router.get("/events/randomBootcamp",getRandomBootcampsContoller);
-module.exports= router.get("/events/randomHackathons/:pageNo",getNextRandomBootcampsContoller);
+module.exports= router.get("/random/:pageNo",getRandomBootcampsContoller);

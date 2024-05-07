@@ -10,7 +10,7 @@ const projectRouter= require("./routers/Projects/projects")
 const festRouter= require("./routers/events/fests");
 const bootcampRouter=require("./routers/events/Bootcamps");
 const hackathonRouter= require("./routers/events/hacakathons")
-
+const CalendarRouter= require("./routers/events/Calendar")
 const app= express();
 // going to create a Socketio server
 dotenv.config();
@@ -24,6 +24,7 @@ app.use("/api/infinity/project", projectRouter);
 app.use("/api/infinity/fest",festRouter )
 app.use("/api/infinity/bootcamp", bootcampRouter);
 app.use("/api/infinity/hackathon", hackathonRouter);
+app.use("/api/infinity/calendar", CalendarRouter);
 // this is the function to get connected with the database
 connectDb();
 // We are going to connect with the socket io server also

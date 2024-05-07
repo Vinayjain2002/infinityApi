@@ -4,7 +4,7 @@ const mongoose= require("mongoose");
 const User= require('../../models/User');
 const Blogger= require("../../models/Blogger");
 const  Bootcamp= require("../../models/BootCamp");
-
+const dotenv= require("dotenv")
 
 const postBootCampController= async ()=>{
     try{
@@ -22,7 +22,7 @@ const postBootCampController= async ()=>{
                 return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
               }     
               try{
-                const decoded=await jwt.verify(usertoken, "vinay");
+                const decoded=await jwt.verify(usertoken, process.env.USER_TOKEN);
                 const userId= decoded._id;
                 // now we are going to find out the details of teh user here extra like is he a valid user or not
                 const user= await User.findById(userId);
@@ -71,8 +71,11 @@ const postBootCampController= async ()=>{
 
 const getAllBootcampsController = async () => {
     try {
+      const pageNo= req.params?.pageNo ?? 1;
+      const skipLength=(pageNo-1)*10;
+
       // Fetch all bootcamps with optional filtering and sorting
-      const bootcamps = await Bootcamp.find({}); // Find all by default
+      const bootcamps = await Bootcamp.find.skip(skipLength).limit(10); // Find all by default
       const length=bootcamps.length;
       if (!bootcamps || bootcamps.length === 0) {
         return res.status(204).json({ message: "No bootcamps found" });
@@ -86,82 +89,13 @@ const getAllBootcampsController = async () => {
   };
 
 
- const getLimitBootcampsController= async(req,res,next)=>{
-    try{
-      // here we are going to define the route to save the Projects for the users
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
-          return res.status(401).json({ message: "Unauthorized: Token not found" });
-      }
-      try{
-          const decoded = jwt.verify(usertoken, "vinay");
-          const userId = decoded._id;
-          const user = await User.findById(userId);
-          if (!user) {
-              return res.status(404).json({ message: "User not found" });
-          } else if (user.blocked) {
-              return res.status(405).json({ message: "Your Account is blocked" });
-          }
-          // we are going to define teh code to retrive the data from the api
-          const bootcamps= await Bootcamp.find({}).limit(10);
-          if(!bootcamps&& bootcamps.length==0){
-              return res.status(401).json({"message": "No Bootcamps Found"});
-          }        
-          return res.status(200).json({"message": "Bootcamps Fetched Successfully", data: bootcamps, length: 10}); 
-      }
-      catch(err){
-          return res.status(500).json({"message": "Internal Server Error"})
-      }
-  }
-  catch(err){
-      return res.status(500).json({"message": "Internal Server Error"})
-  }
-} 
-
-
-const getNextBootcampsController = async(req,res,next)=>{
-  try{
-      const usertoken= req.cookies.usertoken;
-      const {pageNo}= req.params;
-      if(!pageNo){
-          return res.status(404).json({"message":"Page not is not find"});
-      }
-      if(!usertoken){
-          return res.status(401).json({ message: "Unauthorized: Token not found" });
-      }
-      try{
-          const decoded = jwt.verify(usertoken, "vinay");
-          const userId = decoded._id;
-          const user = await User.findById(userId);
-          if (!user) {
-              return res.status(404).json({ message: "User not found" });
-          } else if (user.blocked) {
-              return res.status(405).json({ message: "Your Account is blocked" });
-          }
-          const skipLength= (pageNo-1)*10;
-          // here we are going to fetch the new no of the newLength of the data 
-          const bootcamps=await Bootcamp.find({}).skip(skipLength).limit(10);
-          if(!bootcamps && bootcamps.length==0){
-              return res.status(401).json({"message": "No Bootcamps Found"});
-          }
-          return res.status(200).json({"message": "Bootcamos Fetched Successfully", data: bootcamps, length:10}); 
-      }
-      catch(err){
-          return res.status(500).json({"message": "Internal Server Error"})
-      }
-  }
-  catch(err){
-      return res.status(500).json({"message": "Internal Server Error"})
-  }
-}  
-  
 
   const getParticularBootcampController = async () => {
     try {
-      const { id } = req.params; // Assuming ID is passed in request params
+      const { bootcampId } = req.params; // Assuming ID is passed in request params
   
       // Validate ID presence and format (optional)
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!bootcampId || !mongoose.Types.ObjectId.isValid(bootcampId)) {
         return res.status(400).json({ message: "Invalid bootcamp ID" });
       }
   
@@ -182,10 +116,11 @@ const getNextBootcampsController = async(req,res,next)=>{
     }
   };
   
-  const getBootCampsByDateController = async () => {
+const getBootCampsByDateController = async () => {
     try {
       const { dateOfPosting, lastDateToApply, both } = req.body;
-  
+      const pageNo= req.params;
+      const skipLength= (pageNo-1)*10;
       let pipeline = []; // Initialize empty pipeline
       let sortCriteria = {}; // Initialize empty sort criteria
   
@@ -203,6 +138,7 @@ const getNextBootcampsController = async(req,res,next)=>{
   
       pipeline.push({ $match: {} }); // Match all documents by default
       pipeline.push({$limit: 10});
+      pipeline.push({$skip: skipLength});
       pipeline.push({ $sort: sortCriteria });
   
       // Fetch bootcamps using aggregation pipeline
@@ -219,136 +155,11 @@ const getNextBootcampsController = async(req,res,next)=>{
     }
   };
 
-  
-
-const getNextBootcampsByDateController= async(req,res,next)=>{
-  // here we are going to get the nextProjects Uploaded By the Date
-  try {
-    const { dateOfPosting, lastDateToApply, both } = req.body;
-    const {pageNo}= req.params;
-    if(!pageNo){
-        return res.status(404).json({"message": "Internal Server Error"});
-    }
-    let pipeline = []; // Initialize empty pipeline
-    let sortCriteria = {}; // Initialize empty sort criteria
-
-    // Validate and build pipeline based on request parameters
-    if (dateOfPosting) {
-      sortCriteria = { dateOfPosting: -1 }; // Sort by dateOfPosting descending
-    } else if (lastDateToApply) {
-      sortCriteria = { lastDateToApply: 1 }; // Sort by lastDateToApply ascending
-    } else if (both) {
-      // Handle both criteria: sort by lastDateToApply ascending, then dateOfPosting descending
-      sortCriteria = { lastDateToApply: 1, dateOfPosting: -1 };
-    } else {
-      return res.status(400).json({ message: "Invalid request parameters. Specify dateOfPosting, lastDateToApply, or both." });
-    }
-
-    pipeline.push({ $match: {} }); // Match all documents by default
-    pipeline.push({ $skip: skipLength});
-    pipeline.push({$limit: 10});
-    pipeline.push({ $sort: sortCriteria });
-
-    // Fetch bootcamps using aggregation pipeline
-    const bootcamps = await Bootcamp.aggregate(pipeline);
-
-    if (!bootcamps || bootcamps.length === 0) {
-      return res.status(204).json({ message: "No bootcamps found" });
-    }
-
-    return res.status(200).json({ message: "Bootcamps fetched successfully", data: bootcamps });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Internal Server Error" });
-    }
-}
-
   // here we are going to define the code of the Bootcamp Controllers
-  const userPreferenceBootcampController = async () => {
-    try {
-      const { postedBy, name,organisedBy,dateOfEvent,level, lastDateToApply, entryFee,hashTags,location,certificationProvided, prerequisite, prizes, mode, techStack } = req.body;
-      let pipeline = [
-        { $match: {} } // Match all documents by default
-      ];
   
-      const filters = []; // Initialize an empty filters array
-  
-      // Build match stage filters based on user preferences
-      if (postedBy) {
-        filters.push({ postedBy });
-      }
-      if(name){
-        filters.push({name});
-      }
-      if (organisedBy) {
-        filters.push({ organisedBy });
-      }
-      if (level) {
-        filters.push({ level });
-      }
-      if (location) {
-        filters.push({ location });
-      }
-      if (prizes) {
-        // Assuming prizes is a boolean field indicating presence of prizes
-        filters.push({ prizes });
-      }
-      if(certificationProvided){
-        filters.push({certificationProvided});
-      }
-      if (mode) {
-        filters.push({ mode });
-      }
-     
-      if (dateOfEvent) {
-        filters.push({ dateOfEvent: { $lte: dateOfEvent} }); // Match projects with at least one tag from the list
-    } 
-    if(lastDateToApply){
-      filters.push({ lastDateToApply: { $lte: lastDateToApply} }); // Match projects with at least one tag from the list
-
-    }
-    if(entryFee){
-        filters.push({entryFee: {$lte: entryFee}});
-    }
-    if(techStack){
-      filters.push({techStack: {$in: techStack}})
-    }
-    if(prerequisite){
-      filters.push({prerequisite: {$in: prerequisite}})
-    }
-    if(hashTags){
-      filters.push({hashTags: {$in: hashTags}})
-    }
-      // Include filters only if there are any user preferences
-      if (filters.length > 0) {
-        pipeline.push({ $match: { $and: filters } }); // Combine filters using $and operator
-      }
-     
-      // Add sorting stage (optional)
-      pipeline.push({
-        $sort: {
-          lastDateToApply: 1, // Sort by application deadline ascending
-          dateOfPosting: -1 // Sort by posting date descending (optional)
-        }
-      });
-  
-      // Fetch bootcamps using aggregation pipeline
-      const bootcamps = await Bootcamp.aggregate(pipeline);
-  
-      if (!bootcamps || bootcamps.length === 0) {
-        return res.status(204).json({ message: "No bootcamps found matching your preferences" });
-      }
-  
-      return res.status(200).json({ message: "Bootcamps fetched successfully", data: bootcamps });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Internal Server Error" });
-    }
-  };
 
 
-
-const getNextUserPrefBootcampsController= async(req,res,next)=>{
+const getUserPrefBootcampsController= async(req,res,next)=>{
   try{
     const { postedBy, name,organisedBy,dateOfEvent,level, lastDateToApply, entryFee,hashTags,location,certificationProvided, prerequisite, prizes, mode, techStack } = req.body;
     const {pageNo}= req.params;
@@ -441,7 +252,7 @@ const getNextUserPrefBootcampsController= async(req,res,next)=>{
       if(!usertoken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, "vinay");
+      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -495,7 +306,7 @@ const getNextUserPrefBootcampsController= async(req,res,next)=>{
       if(!usertoken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, "vinay");
+      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -537,7 +348,7 @@ const getNextUserPrefBootcampsController= async(req,res,next)=>{
         }
         try {
             // we are going to find out the details of the user
-            const decoded = jwt.verify(usertoken, "vinay");
+            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -570,7 +381,7 @@ const getNextUserPrefBootcampsController= async(req,res,next)=>{
   const saveBootcampController= async(req,res,next)=>{
     try{
         // here we are going to define the route to save the Projects for the users
-        const {bootcampId}= req.body;
+        const {bootcampId}= req.params;
         if(!bootcampId){
             return res.status(404).json({"message": "Bootcamp id is missing"})
         }
@@ -579,7 +390,7 @@ const getNextUserPrefBootcampsController= async(req,res,next)=>{
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try{
-            const decoded = jwt.verify(usertoken, "vinay");
+            const decoded = jwt.verify(usertoken,process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -604,21 +415,11 @@ const getNextUserPrefBootcampsController= async(req,res,next)=>{
   const getRandomBootcampsContoller= async(req,res,next)=>{
     // here we are going to define the route to get any random No of the Hackathons
     try{
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
-          return res.status(401).json({ message: "Unauthorized: Token not found" });
-      }
-      try{
-          const decoded = jwt.verify(usertoken, "vinay");
-          const userId = decoded._id;
-          const user = await User.findById(userId);
-          if (!user) {
-              return res.status(404).json({ message: "User not found" });
-          } else if (user.blocked) {
-              return res.status(405).json({ message: "Your Account is blocked" });
-          }
+          const pageNo= req.params?.pageNo ?? 1;
+
+          const skipLength= (pageNo-1)*10;
           // here we are going to fetch the new no of the newLength of the data 
-          const bootcamps=await Bootcamp.find({}).limit(20);
+          const bootcamps=await Bootcamp.find({}).skip(skipLength*2).limit(20);
           if(!bootcamps && bootcamps.length==0){
               return res.status(401).json({"message": "No Bootcamps Found"});
           }
@@ -638,73 +439,16 @@ const getNextUserPrefBootcampsController= async(req,res,next)=>{
           return res.status(500).json({"message": "Internal Server Error"})
       }
   }
-  catch(err){
-      return res.status(500).json({"message": "Internal Server Error"})
-  }
-  }
-  
-  
-  const getNextRandomBootcampsContoller= async(req,res,next)=>{
-    // here we are going to define the route to get any random No of the Hackathons
-    try{
-      const {pageNo}=req.params;
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
-          return res.status(401).json({ message: "Unauthorized: Token not found" });
-      }
-      try{
-          const decoded = jwt.verify(usertoken, "vinay");
-          const userId = decoded._id;
-          const user = await User.findById(userId);
-          if (!user) {
-              return res.status(404).json({ message: "User not found" });
-          } else if (user.blocked) {
-              return res.status(405).json({ message: "Your Account is blocked" });
-          }
-          const skipLength= (pageNo-1)*10;
-          // here we are going to fetch the new no of the newLength of the data 
-          const bootcamps=await Bootcamp.find({}).skip(skipLength).limit(20);
-          if(!bootcamps && bootcamps.length==0){
-              return res.status(401).json({"message": "No Bootcamps Found"});
-          }
-          // so we used to find out the first 20 hackathons and now we need to return the 10 random Hackathons
-          for (let i = bootcamps.length - 1; i > 0; i--) {
-            // Pick a random index
-            const j = Math.floor(Math.random() * (i + 1));
-        
-            // Swap the current element with the random element
-            [bootcamps[i], bootcamps[j]] = [bootcamps[j], bootcamps[i]];
-          }
-          const firstTenBootcamps= bootcamps.slice(0,10);
-        
-          return res.status(200).json({"message": "Bootcams Fetched Successfully", data: firstTenBootcamps, length:10}); 
-      }
-      catch(err){
-          return res.status(500).json({"message": "Internal Server Error"})
-      }
-  }
-  catch(err){
-      return res.status(500).json({"message": "Internal Server Error"})
-  }
-  }
   
   module.exports= {
     postBootCampController,
     getAllBootcampsController,
     getParticularBootcampController,
     getBootCampsByDateController,
-    userPreferenceBootcampController,
-    deleteBootCampController,
-    
+    deleteBootCampController, 
     updateBootCampController,
-    getLimitBootcampsController,
-    getNextBootcampsController,
-
-    getNextBootcampsByDateController,
-    getNextUserPrefBootcampsController,
-    savedBootcampController,
     saveBootcampController,
-
-    getRandomBootcampsContoller,
-    getNextRandomBootcampsContoller
+    savedBootcampController,
+    getUserPrefBootcampsController,
+    getRandomBootcampsContoller
 }
