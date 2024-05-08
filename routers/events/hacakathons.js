@@ -5,9 +5,9 @@ const router= express.Router();
 
 // here we are going to define routes for the most important part ie for the hackathons
 module.exports=router.post("/post", PostHackathonController);
-module.exports= router.get("/getAll/:pageNo", getAllHackathonsController);
+module.exports= router.get("/detail/:pageNo", getAllHackathonsController);
 module.exports= router.get("/specific/:hackathonId", getParticularHackathonController);
-module.exports= router.get("/ByDate/:pageNo",getHackathonsByDateController);
+module.exports= router.get("/byDate/:pageNo",getHackathonsByDateController);
 module.exports= router.delete("/delete/:hackathonId", deleteHackathonController);
 
 module.exports= router.put("/update/:hackathonId", updateHacakathonController);

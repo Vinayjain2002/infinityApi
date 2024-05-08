@@ -29,7 +29,8 @@ const noOfUsersController= async (req,res,next)=>{
             if(!noOfUsers){
                 return res.status(404).json({"message": "UNable to find out the no of the Users"});
             }
-            else{
+            else{module.exports= router.get()
+
                 return res.status(200).json({"message": "Users Data Fetched Succesfully","users": noOfUsers, "details": userDetails});
             }
         }
@@ -45,14 +46,14 @@ const noOfUsersController= async (req,res,next)=>{
 
 const RegisteredUserInMonthController = async (req, res, next) => {
   // here we are gonna to find the details of the user who regsitered in a particular month
-
     try{
+      const { month } = req.body;
+
       const pageNo= req.params?.pageNo ?? 1;
       const skipLength= (pageNo-1)*10;
         const adminDetails=await AuthenticateAdmin(req);
         const {message, status}= adminDetails;
         if(status==200){
-            const { month } = req.params;
             const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/; // YYYY-MM format
             if (!month || !monthRegex.test(month)) {
                 return res.status(400).json({ message: "Invalid month format. Use YYYY-MM (e.g., 2024-04)" });
@@ -98,7 +99,7 @@ const RegisteredUserInMonthController = async (req, res, next) => {
       const { message, status } = adminDetails;
   
       if (status === 200) {
-        const { startMonth, endMonth, startYear, endYear } = req.params;
+        const { startMonth, endMonth, startYear, endYear } = req.body;
         if(!startMonth && !endMonth && !startYear && !endYear){
           return res.status(400).json({"message": "Please provide the all the dates"});
         }
@@ -144,7 +145,7 @@ const RegisteredUserInYearController = async (req, res, next) => {
       const { message, status } = adminDetails;
   
       if (status === 200) {
-        const { startYear, startMonth, endMonth, endYear } = req.params;
+        const { startYear, startMonth, endMonth, endYear } = req.body;
   
         // Initialize variables
         let totalCount = 0;
@@ -270,8 +271,6 @@ const todayPostedFestsController = async (req, res, next) => {
     const { message, status } = req.body;
 
     if (status === 200) {
-      const { adminId } = adminDetails;
-
       const today = new Date();
       const year = today.getFullYear();
       const month = today.getMonth(); // 0-based indexing
@@ -327,7 +326,7 @@ const todayLastDateToApplyFestController = async (req, res, next) => {
 
     const adminDetails = await AuthenticateAdmin(req); // Assuming authentication
     // Check request status code if needed (optional)
-    const { message, status } = req.body;
+    const { message, status } = adminDetails;
     if (status !== 200) {
       return res.status(500).json({ message: message });
     }
@@ -435,7 +434,7 @@ const FestUploadedInAMonthController = async(req,res,next)=>{
       }
         // here we are going to define a code that will show the no of the fests that are uploaded in a month
         const adminDetails = await AuthenticateAdmin(req);
-      const { message, status } = req.body;
+      const { message, status } = adminDetails;
       
       if (status === 200) {
       const today = new Date();
@@ -714,7 +713,6 @@ const HackathonsPostedInMonthController= async(req,res,next)=>{
     const { message, status } = adminDetails;
 
     if (status === 200) {
-      const { adminId } = adminDetails;
       const today = new Date();
       // Create start and end date for today (optimized and handles month end)
       // Create start and end date for today (optimized and handles month end)
@@ -1204,6 +1202,8 @@ const videoPostedLastYearController= async(req,res,next)=>{
       return res.status(500).json({"message": "Internal Server Error"});
   }
 }
+
+
 const registeredUserInRange= async(model, startDate, endDate)=>{
     try{
         // here we are going to find out the details of the users registered in a particular time period
@@ -1282,7 +1282,6 @@ module.exports={
   RegisteredUserInMonthController,
   RegisteredUserInYearController,
   registeredTodayUsersCountController,
-  noOfFestsControllers,
 
 // blogs controller  
   noOfTodayPostedBlogs,
@@ -1304,7 +1303,6 @@ module.exports={
   LastWeekToApplyFestsController,  
   FestUploadedInAMonthController,
   TotalFestsInAParticularRangeController,
-
 
 // hackathons controller
   HackathonsPostedInMonthController,

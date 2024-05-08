@@ -1,11 +1,11 @@
 const express= require("express")
-const { getTopicBlogsController, bloggerBlogsController, editBlogsController, createBlogsController, relatedBlogsController, getBlogsController, deleteBlogsController } = require("../controllers/blogsController/blogs")
+const { getTopicBlogsController, bloggerBlogsController, editBlogsController, createBlogsController, relatedBlogsController, getBlogsController, deleteBlogsController } = require("../controllers/blogsController/blogsController")
 const router= express.Router()
 
-module.exports= router.get("/blogs/:topic/:length",getTopicBlogsController)
-module.exports= router.get("/blogs/all/:userId", bloggerBlogsController)
-module.exports= router.get("/blogs/:BlogId",getBlogsController)
-module.exports= router.post("/blogs/update/:BlogId",editBlogsController);
-module.exports=router.put("/blogs/create",createBlogsController);
-module.exports= router.get("/blogs/related/:length", relatedBlogsController);
-module.exports= router.get("/blogs/delete/:BlogsId",deleteBlogsController);
+module.exports= router.get("/:topic/:pageNo",getTopicBlogsController)
+module.exports= router.get("/blogggerBlogs/:bloggerId/:pageNo", bloggerBlogsController)
+module.exports= router.get("/detail/:pageNo",getBlogsController)
+module.exports= router.post("/update/:blogId",editBlogsController);
+module.exports=router.put("/post",createBlogsController);
+module.exports= router.get("/related/:pageNo", relatedBlogsController);
+module.exports= router.get("/delete/:blogId",deleteBlogsController);

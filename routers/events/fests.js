@@ -5,7 +5,7 @@ const router= express.Router();
 
 
 module.exports= router.get("/post",postFestController)
-module.exports= router.get("/getAllFest/:pageNo", getAllFestsController);
+module.exports= router.get("/detail/:pageNo", getAllFestsController);
 module.exports= router.get("/specific/:festId", getParticularFestController);
 module.exports= router.get("/byDate/:pageNo",getFestsByDateController);
 module.exports= router.get("/userPref/:pageNo",getUserPreferenceFestsController);

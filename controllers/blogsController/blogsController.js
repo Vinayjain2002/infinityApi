@@ -7,8 +7,8 @@ const Blog = require("../../models/Blogs");
 const getTopicBlogsController= async (req,res)=>{
     try{
         // const we are gonna to get the topic wise all teh blogs
-        const {blogTopic}= req.body;
-        const {pageNo=1}= req.params;
+        const Topic= req.params;
+        const pageNo= req.params?.pageNo ?? 1;
         const skipLength= (pageNo-1)*10;
         if(!blogTopic){
             return res.status(401).json({"message": "Blog Topic is not find"});
@@ -29,9 +29,9 @@ const getTopicBlogsController= async (req,res)=>{
 const bloggerBlogsController= async(req,res,next)=>{
     try{
         //we are gonna to get all the blog of a Particular Blogger
-        const {pageNo=1}= req.params;
+        const pageNo= req.params?.pageNo ?? 1;
         const skipLength= (pageNo-1)*10;
-        const {bloggerId}= req.body;
+        const bloggerId= req.body;
         if(!bloggerId){
             return res.status(401).json({"message": "Blogger Id is not found"});
         }
@@ -49,7 +49,7 @@ const bloggerBlogsController= async(req,res,next)=>{
 const relatedBlogsController = async( req, res,next)=>{
     try{
         const { blogTopic, level, createdBy } = req.body;
-        const pageNo = parseInt(req.params.pageNo) || 1; // Set default page to 1
+        const pageNo = req.params?.pageNo ?? 1; // Set default page to 1
         const skip = (pageNo - 1) * 10;
         const limit = 10;
     
@@ -133,6 +133,10 @@ const editBlogsController= async(req, res,next)=>{
 
     // Validate token using JWT verify
     try {
+        const blogId= req.body;
+        if(!blogId){
+            return res.status(401).json({"message": "Blog Id is not present"});
+        }
       const decoded = jwt.verify(bloggertoken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
       const bloggerId = decoded._id;
 
@@ -148,7 +152,6 @@ const editBlogsController= async(req, res,next)=>{
       }    
 
         // here the blogger is going to be update the data of the blog here
-        const {blogId}= req.body;
         // checking is the same id present in the bloggerId
         const bloggerBlog=blogger.blogs.includes(blogId);
         if(!bloggerBlog){
@@ -187,7 +190,7 @@ const editBlogsController= async(req, res,next)=>{
 
 const getBlogsController= async(req,res,next)=>{
     try{
-       const pageNo = parseInt(req.params.pageNo) || 1; // Set default page to 1
+       const pageNo = req.params?.pageNo ?? 1 // Set default page to 1
         const skipLength= (pageNo-1)*10;
         // here we are going to find out all the blogs for the user
         const allBlogs= Blog.find({}).skip(skipLength).limit(10);
@@ -204,6 +207,7 @@ const getBlogsController= async(req,res,next)=>{
 const deleteBlogsController= async(req, res,next)=>{
     // here we are going to delete the blogs of the user
     const bloggertoken = req.cookies.bloggertoken;
+    const blogId= req.body;
     if (!bloggertoken) {
       return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
     }
@@ -225,7 +229,6 @@ const deleteBlogsController= async(req, res,next)=>{
       }    
 
         // here the blogger is going to be update the data of the blog here
-        const {blogId}= req.body;
         // checking is the same id present in the bloggerId
         const bloggerBlog=blogger.blogs.includes(blogId);
         if(!bloggerBlog){
