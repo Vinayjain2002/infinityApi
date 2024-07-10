@@ -1,0 +1,78 @@
+we are gonna to define the routes for the Blogger Auth
+
+Register Blogger:
+    required: username, email
+    401: if the username or the email is not defined
+    404: if the username or the email already exists
+    200: if the blogger Registered Successfully
+    201: if the blogger Registered but email not send
+
+Refetch Blogger:
+    required: username or email
+    401: Token not found
+    404: Blogger Not found
+    403: Blogger Account is blocked
+    200: Blogger Logged In Successfully
+
+Login Blogger:
+    required: username or email, password
+    401: if the username or the email is not defined
+    404: if the Blogger Detials are not find
+    405: if the password do not match
+    403: if the account is blocked
+    200: notification send
+    201: notification not send
+
+UpdateBloggerProfileController
+    required: bloggerToken
+    401: bloggerToken not found
+    404: Blogger account is not found
+    403: account is blocked
+    200: Profile Updated Successfully
+
+UpdateBloggerEmailGenerator:
+    required: bloggerToken, email
+    401: token not found
+    403: Your Account is blocked
+    405: Email send Successfully
+    400: Error while Updating Email
+    404: Internal Server Error
+
+UpdateBloggerEmailController:
+    401: token not found of the blogger or the userToken
+    409: Internal Server Error while logging user
+    405: account is blocked
+    404: Blogger not found
+    405: Account is blocked
+
+
+AviableBloggerUsernamesController:
+    required: username,
+    401: username is not defined
+    200: Blogger name is defined
+
+UpdateBloggerUsernameController:
+    required: bloggerToken, username
+    401: Blogger Token is not defined
+    401: Username is not define
+
+ResetBloggerPassword:
+    401: Email or the username is not defined
+    404: Blogger account is not defined
+    400: Error while Sending the email
+
+FindBloggerByPrefixNameController:
+    200: Finding the details of the username
+
+FindAllBloggersController:
+    200: Find all the Bloggers details
+
+UpdateBloggerPasswordController:
+    required: passwordResetToken
+    401: Password Reset Token not found
+    404: New Password not found
+    400: Blogger not found
+    405: Blogger Account is blocked
+    200: password UPDATED Successfully
+
+

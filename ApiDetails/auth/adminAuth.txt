@@ -1,0 +1,83 @@
+we are gonna to define the details of the Admin Login , register, admin approval etc
+
+Login as Admin controller:
+    required body: adminpassword, adminemail
+    401: if the required fields are not present
+    404: if the admin account is not find
+    401: if the admin password is also not defined
+    410: if the account is not approved
+    401: if the password is incorrect
+    200: if the login notification send Successfuly
+    201: if login but notification not send
+
+Create Admin Controller:
+    required body: adminemail, approvedadmin
+    required params: adminToken
+
+    404: if the admin account is deleted
+    401: if required credentials are not present
+    404: if the admin account is not find
+    410: id the admin is not appreoved or not allowed to create other admin
+    404: if the user does not exists
+    400: if the admin is already approved and again try to approved
+    200: if the admin is approved or we used to define the access levels
+
+UpdatePermissions:
+    required: email,
+    params: adminToken
+    404: if the admin not found ot account is deleted
+    401: if the adminToken is not found
+    410: if the account is not approved or allow to change the UpdatePermissions
+    404: if the admin User not found
+    200: permissions updated Successfuly
+
+Delete Admin:
+    required: adminemail
+    params: adminToken
+
+    401: if the adminToken is not found, adminemail is not find
+    410: if the admin is not approved, or not allowed to create other admin
+    404: if the admin not found
+    404: if the admin to be deleted not found
+
+fetch admin details:
+    params: adminToken
+    401: if the adminToken is not defined
+    404: if the admin not found
+    410: if the admin account is deleted, or not the admin account is not approved
+    200: if the all,the admin details are fetched Successfuly
+
+Fetch Particular admin details:
+    required: adminemail
+    params:   adminToken
+    401: if the adminToken or adminemail is not defined
+    410: if the admin is not approved, admin account is deleted
+    404: if the logged in  admin is nto found
+    200: if the admin detials feched Successfuly
+
+
+AdminApplications:
+    params:  adminToken
+    401: if the adminToken is not defined
+    404: if the logged in admin account is not find
+    410: if the admin not approved or the accoutn is deleted
+    200: if the all the admin applications are fetched Successfuly
+
+Delete admin applications:
+    params: adminToken
+    required: adminId
+    401: if the adminId is not defined
+    404: if the logged in admin not found
+    410: if the admin is not approved or the account is deleted
+    410: if not allowed to createother admin
+    404: if the application not found, application is already deleted
+    200: if the application is deleted Successfuly
+
+
+Apply for admin:
+    required: adminname, adminemail, adminmobileno,(mandatory)   adminProfilePicture, adminTechStack,accessAppliedFor
+    410: if your are already admin 
+    409: if the already applied
+    401: if the required fields are not present
+    400: password reset email is not send
+

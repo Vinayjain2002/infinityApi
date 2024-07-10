@@ -2,10 +2,11 @@ const mongoose= require("monoose")
 
 const VideosSchema= mongoose.Schame({
     url: {
-        type: String
+        type: String,
+        required: true
     },
     videoBlocked: {
-        type: Bollean,
+        type: Boolean,
         default: false
     },
     owner: {
@@ -21,7 +22,8 @@ const VideosSchema= mongoose.Schame({
     },
     tags: [
         {
-            type: String
+            type: String,
+            required: true
         }
     ],
     

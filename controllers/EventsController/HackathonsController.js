@@ -16,13 +16,13 @@ const PostHackathonController= async ()=>{
           return res.status(400).json({ message: `Missing required fields: ${missingFields.join(', ')}` })
       }
         // so we had used to get all the mandatort details here 
-            const usertoken= req.cookies.usertoken;
-            if (!usertoken) {
+            const userToken= req.params;
+            if (!userToken) {
                 // here the token of the user is not find and the user need to login to post the events
                 return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
               }     
               try{
-                const decoded=await jwt.verify(usertoken, process.env.USER_TOKEN);
+                const decoded=await jwt.verify(userToken, process.env.USER_TOKEN);
                 const userId= decoded._id;
                 // now we are going to find out the details of teh user here extra like is he a valid user or not
                 const user=await User.findById(userId);
@@ -75,17 +75,17 @@ const PostHackathonController= async ()=>{
 }
 
 
-const getAllHackathonsController = async () => {
+const GetAllHackathonsController = async () => {
     try {
       const pageNo= req.params?.pageNo ?? 1;
       const skipLength= (pageNo-1)*10;
       // Fetch all hackathons (consider filtering and sorting if needed)
       const hackathons = await Hackathon.find({}).skip(skipLength).limit(10);
-      if (!hackathons || hackathons.length === 0) {
-        return res.status(204).json({ message: "No hackathons found" });
+      if (!hackathons || hackathons.length == 0) {
+        return res.status(404).json({ message: "No hackathons found" });
       }
   
-      return res.status(200).json({ message: "Hackathons fetched successfully", data: hackathons, length: 10});
+      return res.status(200).json({ message: "Hackathons fetched successfully", "data": hackathons, "length": 10});
     } catch (err) {
       console.error(err);
       return res.status(500).json({ message: "Internal Server Error" });
@@ -93,7 +93,7 @@ const getAllHackathonsController = async () => {
   };
 
 
-const getParticularHackathonController = async () => {
+const GetParticularHackathonController = async () => {
     try {
       const { hackathonId } = req.params;
       // Validate ID presence and format (optional)
@@ -108,14 +108,14 @@ const getParticularHackathonController = async () => {
         return res.status(404).json({ message: "No hackathon found with that ID" });
       }
   
-      return res.status(200).json({ message: "Hackathon details fetched successfully", data: hackathon });
+      return res.status(200).json({ message: "Hackathon details fetched successfully", "data": hackathon });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ message: "Internal Server Error" });
     }
   };
   
-const getHackathonsByDateController = async () => {
+const GetHackathonsByDateController = async () => {
     try {
       const pageNo= req.params?.pageNo ?? 1;
       const { dateOfPosting, lastDateToApply, both } = req.body;
@@ -144,7 +144,7 @@ const getHackathonsByDateController = async () => {
       // Fetch hackathons using aggregation pipeline
       const hackathons = await Hackathon.aggregate(pipeline);
   
-      if (!hackathons || hackathons.length === 0) {
+      if (!hackathons || hackathons.length == 0) {
         return res.status(204).json({ message: "No hackathons found based on your criteria" });
       }
   
@@ -156,7 +156,7 @@ const getHackathonsByDateController = async () => {
   };
   
 
-const getUserPrefHackathonsController= async(req,res,next)=>{
+const GetUserPrefHackathonsController= async(req,res,next)=>{
   try{
     const pageNo= req.params?.pageNo ?? 1;
     const skipLength= (pageNo-1)*10;
@@ -198,12 +198,12 @@ const getUserPrefHackathonsController= async(req,res,next)=>{
   }
       // going to fetch the data based on the filters
       const findHackathons= await Hackathon.find({$and: filters}).skip(skipLength).limit(10);
-      if(!findHackathons || findHackathons.length===0){
+      if(!findHackathons || findHackathons.length==0){
           return res.status(204).json({"message": "no Hackathons Find"})
       }
       return res.status(200).json({
-          message: "Hackathons fetched Succesfully",
-          projects: findHackathons
+          "message": "Hackathons fetched Succesfully",
+          "projects": findHackathons
       });
   }
   catch(err){
@@ -213,19 +213,18 @@ const getUserPrefHackathonsController= async(req,res,next)=>{
   }
 }
 
-  const deleteHackathonController=async(req,res,next)=>{
+  const DeleteHackathonController=async(req,res,next)=>{
     try{
       // going to delete the Project Details
-      const {hackathonId}= req.params; // send the data in the form of the Bootcamp id
+      const {hackathonId, userToken}= req.params; // send the data in the form of the Bootcamp id
       if(!hackathonId){
         return res.status(401).json({"message": "Hackathon Id is missing"})
       }
       // we are going to change the Project Details
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
+      if(!userToken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
+      const decoded= jwt.verify(userToken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user= await User.findById(userId);
@@ -256,7 +255,7 @@ const getUserPrefHackathonsController= async(req,res,next)=>{
     // 7. Update User's Projects (Efficient Update with Pull Operator)
     const updatedUser = await User.findByIdAndUpdate(userId, { $pull: {hackathonsPosted: hackathonId} }, { new: true }); // Efficient update with `pull`
     if (!updatedUser) {
-      return res.status(500).json({ message: "Failed to remove Hackathon from your posted Hackathon" });
+      return res.status(400).json({ message: "Failed to remove Hackathon from your posted Hackathon" });
     }
     return res.status(200).json({ message: "Hackathon deleted successfully" });
   }
@@ -265,20 +264,19 @@ const getUserPrefHackathonsController= async(req,res,next)=>{
   }
 }
 
-  const updateHacakathonController= async(req,res,next)=>{
+  const UpdateHacakathonController= async(req,res,next)=>{
     try{
       // going to delete the Project Details
-      const {hackathonId}= req.params;
+      const {hackathonId, userToken}= req.params;
       const { updatedData}= req.body;
       if(!hackathonId){
           return res.status(401).json({"message": "Hackathon Id is missing"})
       }
       // we are going to change the Project Details
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
+      if(!userToken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
+      const decoded= jwt.verify(userToken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -311,16 +309,15 @@ return res.status(200).json({ message: "Hackathon updated successfully", updated
   }
 
 
-const savedHackathonsController = async (req, res, next) => {
+const SavedHackathonsController = async (req, res, next) => {
   try {
       // here we are going to get the data that is saved by the user
-      const usertoken = req.cookies.usertoken;
-      if (!usertoken) {
+      const userToken = req.params;
+      if (!userToken) {
           return res.status(401).json({ message: "Unauthorized: Token not found" });
       }
-      try {
           // we are going to find out the details of the user
-          const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+          const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
           const userId = decoded._id;
           const user = await User.findById(userId);
           if (!user) {
@@ -341,28 +338,23 @@ const savedHackathonsController = async (req, res, next) => {
               }
           }
           return res.status(200).json({ message: "Saved Hackathons fetched successfully", resultHackathons });
-
-      } catch (err) {
-          return res.status(500).json({ message: "Internal Server Error" });
-      }
   } catch (err) {
       return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-const saveHackathonController= async(req,res,next)=>{
+const SaveHackathonController= async(req,res,next)=>{
   try{
       // here we are going to define the route to save the Projects for the users
-      const {hackathonId}= req.params;
+      const {hackathonId, userToken}= req.params;
       if(!hackathonId){
           return res.status(404).json({"message": "Hackathon id is missing"})
       }
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
+      if(!userToken){
           return res.status(401).json({ message: "Unauthorized: Token not found" });
       }
       try{
-          const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+          const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
           const userId = decoded._id;
           const user = await User.findById(userId);
           if (!user) {
@@ -385,16 +377,16 @@ const saveHackathonController= async(req,res,next)=>{
 }
 
 
-const getRandomHackathonsContoller= async(req,res,next)=>{
+const GetRandomHackathonsContoller= async(req,res,next)=>{
   // here we are going to define the route to get any random No of the Hackathons
   try{
     const pageNo=req.params?.pageNo ?? 1;
-    const usertoken= req.cookies.usertoken;
-    if(!usertoken){
+    const userToken= req.params;
+    if(!userToken){
         return res.status(401).json({ message: "Unauthorized: Token not found" });
     }
     try{
-        const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+        const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
         const userId = decoded._id;
         const user = await User.findById(userId);
         if (!user) {
@@ -405,7 +397,7 @@ const getRandomHackathonsContoller= async(req,res,next)=>{
         const skipLength= (pageNo-1)*10;
         // here we are going to fetch the new no of the newLength of the data 
         const hackathons=await Hackathon.find({}).skip(skipLength).limit(20);
-        if(!hackathons && hackathons.length==0){
+        if(!hackathons || hackathons.length==0){
             return res.status(401).json({"message": "No Hackathons Found"});
         }
         // so we used to find out the first 20 hackathons and now we need to return the 10 random Hackathons
@@ -418,7 +410,7 @@ const getRandomHackathonsContoller= async(req,res,next)=>{
         }
         const firstTenHackathons= hackathons.slice(0,10);
       
-        return res.status(200).json({"message": "Hackathons Fetched Successfully", data: firstTenHackathons, length:10}); 
+        return res.status(200).json({"message": "Hackathons Fetched Successfully", "data": firstTenHackathons, "length":10}); 
     }
     catch(err){
         return res.status(500).json({"message": "Internal Server Error"})
@@ -432,14 +424,14 @@ catch(err){
 
 module.exports= {
   PostHackathonController,
-   getAllHackathonsController,
-   getParticularHackathonController,
-   getHackathonsByDateController,
-   deleteHackathonController,
+   GetAllHackathonsController,
+   GetParticularHackathonController,
+   GetHackathonsByDateController,
+   DeleteHackathonController,
 
-   updateHacakathonController,
-   savedHackathonsController,
-   saveHackathonController,
-   getUserPrefHackathonsController,
-   getRandomHackathonsContoller,
+   UpdateHacakathonController,
+   SavedHackathonsController,
+   SaveHackathonController,
+   GetUserPrefHackathonsController,
+   GetRandomHackathonsContoller,
   };

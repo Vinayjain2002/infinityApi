@@ -2,20 +2,7 @@
 const express = require("express");
 const { registerUserController, loginUserController, logoutUserController, refetchUserController, updateUserProfile, updateUserEmailController, updateUserProfilePicture, updateUserUsernamesController, resetUserPassword, updateUserEmailGenerator, followUserController, unfollowUserController, blockUserController, updateUserPasswordController, updateUserPicture, avaibleUserUsernamesController } = require("../controllers/authControllers/registerUserController");
 const { registerBloggerController, loginBloggerController, logoutBloggerController, refetchBloggerController, updateBloggerProfileController, updateBloggerEmailController, updateBloggerPictureController, updateBloggerUsernameController, aviableBloggerUsernames, resetBloggerPassword, updateBloggerEmailGenerator, updateBloggerPasswordController, findBloggerByPrefixNameController, findAllBloggersController} = require("../controllers/authControllers/registerBloggerController");
-// const { registerTutorController, loginTutorController, logoutTutorController, refetchTutorController, getTutorPassword, resetTutorPassword, forgotTutorPassword, updateTutorProfileController, updateTutorEmailController, updateTutorPictureController, updateTutorUsernameController, updateTutorPasswordController, findAllTutorsController, findTutorByPrefixNameController, updateTutorEmailGenerator } = require("../controllers/authControllers/registerTutorController");
 const router= express.Router();
-const {upload} = require('../middleWare/multerMiddleWare');
-
-const pictureUpload=upload.fields([
-    {
-        name: 'profilePicture',
-        maxCount: 1
-    },
-    {
-        name: 'coverPicture',
-        maxCount: 1
-    }
-]);
 
 module.exports= router.post("/user/register",registerUserController);
 module.exports= router.post("/user/login", loginUserController);
@@ -24,7 +11,7 @@ module.exports= router.get("/user/aviableUsernames", avaibleUserUsernamesControl
 module.exports= router.get("/user/fetch", refetchUserController);
 module.exports= router.put("/user/updateProfile",updateUserProfile);
 module.exports= router.put("/user/updatingEmail",updateUserEmailController);
-module.exports= router.put("/user/updatePicture", pictureUpload,updateUserPicture);
+// module.exports= router.put("/user/updatePicture",updateUserPicture);
 module.exports= router.get("/user/updateEmailRequest", updateUserEmailGenerator);
 module.exports= router.get("/user/updateUsername",updateUserUsernamesController);
 module.exports= router.get("/blogger/aviableUsernames", avaibleUserUsernamesController);

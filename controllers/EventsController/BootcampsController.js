@@ -5,8 +5,9 @@ const User= require('../../models/User');
 const Blogger= require("../../models/Blogger");
 const  Bootcamp= require("../../models/BootCamp");
 const dotenv= require("dotenv")
+dotenv.config()
 
-const postBootCampController= async ()=>{
+const PostBootCampController= async ()=>{
     try{
         const {name, mode, lastDateToApply, dateOfEvent,entryFee,description,registerationUrl,organiser,prizes,tutor,queryContacts,...data}= req.body;
         // checking all teh required fields are present or not
@@ -16,13 +17,13 @@ const postBootCampController= async ()=>{
             return res.status(400).json({ message: `Missing required fields: ${missingFields.join(', ')}` });
         }
         // so we had used to get all the mandatort details here 
-            const usertoken= req.cookies.usertoken;
-            if (!usertoken) {
+            const userToken= req.params;
+            if (!userToken) {
                 // here the token of the user is not find and the user need to login to post the events
                 return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
               }     
               try{
-                const decoded=await jwt.verify(usertoken, process.env.USER_TOKEN);
+                const decoded=await jwt.verify(userToken, process.env.USER_TOKEN);
                 const userId= decoded._id;
                 // now we are going to find out the details of teh user here extra like is he a valid user or not
                 const user= await User.findById(userId);
@@ -69,7 +70,7 @@ const postBootCampController= async ()=>{
     }
 }
 
-const getAllBootcampsController = async () => {
+const GetAllBootcampsController = async () => {
     try {
       const pageNo= req.params?.pageNo ?? 1;
       const skipLength=(pageNo-1)*10;
@@ -81,7 +82,7 @@ const getAllBootcampsController = async () => {
         return res.status(204).json({ message: "No bootcamps found" });
       }
   
-      return res.status(200).json({ message: "Bootcamps fetched successfully", data: bootcamps });
+      return res.status(200).json({ message: "Bootcamps fetched successfully", data: bootcamps, "length": length});
     } catch (err) {
       console.error(err);
       return res.status(500).json({ message: "Internal Server Error" });
@@ -90,7 +91,7 @@ const getAllBootcampsController = async () => {
 
 
 
-  const getParticularBootcampController = async () => {
+  const GetParticularBootcampController = async () => {
     try {
       const { bootcampId } = req.params; // Assuming ID is passed in request params
   
@@ -99,7 +100,7 @@ const getAllBootcampsController = async () => {
         return res.status(400).json({ message: "Invalid bootcamp ID" });
       }
   
-      const bootcamp = await Bootcamp.findById(id);
+      const bootcamp = await Bootcamp.findById(bootcampId);
       if (!bootcamp) {
         return res.status(404).json({ message: "Bootcamp not found" });
       }
@@ -116,10 +117,10 @@ const getAllBootcampsController = async () => {
     }
   };
   
-const getBootCampsByDateController = async () => {
+const GetBootCampsByDateController = async () => {
     try {
       const { dateOfPosting, lastDateToApply, both } = req.body;
-      const pageNo= req.params;
+      const pageNo= req.params?.pageNo ?? 1;
       const skipLength= (pageNo-1)*10;
       let pipeline = []; // Initialize empty pipeline
       let sortCriteria = {}; // Initialize empty sort criteria
@@ -159,10 +160,10 @@ const getBootCampsByDateController = async () => {
   
 
 
-const getUserPrefBootcampsController= async(req,res,next)=>{
+const GetUserPrefBootcampsController= async(req,res,next)=>{
   try{
     const { postedBy, name,organisedBy,dateOfEvent,level, lastDateToApply, entryFee,hashTags,location,certificationProvided, prerequisite, prizes, mode, techStack } = req.body;
-    const {pageNo}= req.params;
+    const {pageNo}= req.params?.pageNo ?? 1;
     let pipeline = [
       { $match: {} } // Match all documents by default
     ];
@@ -227,8 +228,8 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
           return res.status(204).json({"message": "no Bootcamps Find"})
       }
       return res.status(200).json({
-          message: "Bootcamps fetched Succesfully",
-          projects: findBootcamp
+          "message": "Bootcamps fetched Succesfully",
+          "projects": findBootcamp
       });
   }
   catch(err){
@@ -240,19 +241,18 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
 
 
   
-  const deleteBootCampController= async(req,res,next)=>{
+  const DeleteBootCampController= async(req,res,next)=>{
     try{
       // going to delete the Project Details
-      const {bootcampId}= req.params; // send the data in the form of the Bootcamp id
+      const {bootcampId, userToken}= req.params; // send the data in the form of the Bootcamp id
       if(!bootcampId){
         return res.status(401).json({"message": "Bootcamp Id is missing"})
       }
       // we are going to change the Project Details
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
+      if(!userToken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
+      const decoded= jwt.verify(userToken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -292,21 +292,20 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
   }
   }
 
-  const updateBootCampController = async(req,res,next)=>{
+  const UpdateBootCampController = async(req,res,next)=>{
     try{
       // going to delete the Project Details
-      const {bootcampId}= req.params;
+      const {bootcampId, userToken}= req.params;
       const { updatedData}= req.body;
 
       if(!bootcampId){
           return res.status(401).json({"message": "Bootcamp Id is missing"})
       }
       // we are going to change the Project Details
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
+      if(!userToken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
+      const decoded= jwt.verify(userToken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -328,7 +327,7 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
     }
     let updatedBootcamp = await Bootcamp.findByIdAndUpdate(bootcampId, updatedData, { new: true });
     if (!updatedBootcamp) {
-      return res.status(500).json({ message: "Failed to update Boocamp" });
+      return res.status(400).json({ message: "Failed to update Boocamp" });
     }
     // 6. Delete Project (Core Functionality)
     return res.status(200).json({ message: "Bootcamp Updated successfully" });
@@ -339,16 +338,16 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
   }
 
 
-  const savedBootcampController = async (req, res, next) => {
+  const SavedBootcampController = async (req, res, next) => {
     try {
         // here we are going to get the data that is saved by the user
-        const usertoken = req.cookies.usertoken;
-        if (!usertoken) {
+        const userToken = req.params;
+        if (!userToken) {
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try {
             // we are going to find out the details of the user
-            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+            const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -378,19 +377,18 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
     }
   };
   
-  const saveBootcampController= async(req,res,next)=>{
+  const SaveBootcampController= async(req,res,next)=>{
     try{
         // here we are going to define the route to save the Projects for the users
-        const {bootcampId}= req.params;
+        const {bootcampId,userToken}= req.params;
         if(!bootcampId){
             return res.status(404).json({"message": "Bootcamp id is missing"})
         }
-        const usertoken= req.cookies.usertoken;
-        if(!usertoken){
+        if(!userToken){
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try{
-            const decoded = jwt.verify(usertoken,process.env.USER_TOKEN);
+            const decoded = jwt.verify(userToken,process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -412,7 +410,7 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
     }
   }
   
-  const getRandomBootcampsContoller= async(req,res,next)=>{
+  const GetRandomBootcampsContoller= async(req,res,next)=>{
     // here we are going to define the route to get any random No of the Hackathons
     try{
           const pageNo= req.params?.pageNo ?? 1;
@@ -420,7 +418,7 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
           const skipLength= (pageNo-1)*10;
           // here we are going to fetch the new no of the newLength of the data 
           const bootcamps=await Bootcamp.find({}).skip(skipLength*2).limit(20);
-          if(!bootcamps && bootcamps.length==0){
+          if(!bootcamps || bootcamps.length==0){
               return res.status(401).json({"message": "No Bootcamps Found"});
           }
           // so we used to find out the first 20 hackathons and now we need to return the 10 random Hackathons
@@ -433,7 +431,7 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
           }
           const firstTenBootcamps= bootcamps.slice(0,10);
         
-          return res.status(200).json({"message": "Bootcamps Fetched Successfully", data: firstTenBootcamps, length:10}); 
+          return res.status(200).json({"message": "Bootcamps Fetched Successfully", "data": firstTenBootcamps, "length":10}); 
       }
       catch(err){
           return res.status(500).json({"message": "Internal Server Error"})
@@ -441,14 +439,14 @@ const getUserPrefBootcampsController= async(req,res,next)=>{
   }
   
   module.exports= {
-    postBootCampController,
-    getAllBootcampsController,
-    getParticularBootcampController,
-    getBootCampsByDateController,
-    deleteBootCampController, 
-    updateBootCampController,
-    saveBootcampController,
-    savedBootcampController,
-    getUserPrefBootcampsController,
-    getRandomBootcampsContoller
+    PostBootCampController,
+    GetAllBootcampsController,
+    GetParticularBootcampController,
+    GetBootCampsByDateController,
+    DeleteBootCampController, 
+    UpdateBootCampController,
+    SaveBootcampController,
+    SavedBootcampController,
+    GetUserPrefBootcampsController,
+    GetRandomBootcampsContoller
 }

@@ -50,6 +50,7 @@ const userSchema= new mongoose.Schema({
     },
     mobileNo: {
         type: String,
+        required: true
    },
     bio: {
         type:String,
@@ -139,10 +140,6 @@ const userSchema= new mongoose.Schema({
         type: String
     }
     ],
-    coursesApplied: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "CourseStudents"
-    },
     savedBlogs: [
         {
             type: mongoose.Schema.Types.ObjectId,

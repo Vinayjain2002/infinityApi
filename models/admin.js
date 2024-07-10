@@ -59,6 +59,7 @@ const adminSchema= mongoose.Schema({
     },
     adminpassword: {
         type:String,
+        required: true
     },
     userAccess: {
         type: Boolean,

@@ -1,0 +1,71 @@
+We are gonna to define the details pf the api of the Project
+
+Upload Project:
+    required: projectName, description,gitRepo,privateProject,projectImage,techStack, noOfPages,projectOverView
+    params: userToken
+
+    401: if the userToken is not found
+    401: if the required fields are not found
+    404: if the user not found
+    405: if the account is blocked
+    200: user is welocmed with email for uploading public projectImage
+    201: if the email not send
+
+
+GetUserPrefProjectsController:
+    requried: projectName,projectLevel,techStack, projectAcheivements,tags
+
+    404: if the Project is not found
+    200: if the user Pref found
+
+
+GetSpecificProjectController:
+    params: projectId
+
+    401: if the fields are not define
+    404:if the project are not found
+    200: done
+
+ChangeProjectController:
+    requried: updatedData
+    params: projectId, userToken
+
+    401: if the fields are not defined
+    404: if the user not found
+    405:if the user account is blocked
+    404:if the Project is blocked
+    400: if the updatedProject is not found
+
+Delte Project:
+    projectId, userToken: params
+    401: if the userToken is not defined
+    404: if the user is not defined
+    405: if the account is blocked
+    400: if unable to Delte the project
+    411: if the user profile is not update
+
+Saved Project:
+    params: userToken
+    401: if the userToken is not defined
+    404: if the user is not find
+    405: if the user account is blocked
+    200: find all the saved Projects
+
+Save Project:
+    params: userToken
+    required: projectId
+
+    404: if the user not found
+    405: if the account is blocked
+    200: done
+
+GetProjectsController:
+    params: userToken
+    401: if the userToken is not defined
+    404: if the user not found
+    405: if the account is blocked
+    200: done
+
+GetProject By date:
+    404: if some Error while getting project by date
+    200: if all the Projects are fetched Successfully

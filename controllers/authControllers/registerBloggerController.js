@@ -1,4 +1,3 @@
-const {CustomError} = require("../../middleWare/error")
 const mongoose= require("mongoose")
 const bcrypt = require('bcryptjs'); // Import bcrypt for password hashing
 const jwt= require("jsonwebtoken")
@@ -8,28 +7,27 @@ const { BloggerWelcome, resetBloggerEmail, loginBloggerNotfyEmail } = require(".
 const dotenv= require("dotenv");
 dotenv.config();
  
-const registerBloggerController= async( req,res,next)=> {
+const RegisterBloggerController= async( req,res,next)=> {
       // we need to first check the email or the phone no first
     try{
         const {username, email}= req.body;
         if(username== undefined || email==undefined){
-          return res.status(404).json({"messsage": "Provide the username or the email"});
+          return res.status(401).json({"messsage": "Provide the username or the email"});
         }
         // we are going to find out the existing users
         const existingBlogger= await Blogger.findOne({$or: [{username}, {email}]})
         if(existingBlogger){
-            return res.status(409).json({
+            return res.status(404).json({
                 message: "Username or email already exists"
             })
         };  
-        const saltRounds= 10;
-        // we are going to send a email to the blogger for the password creation
         
-        const hashedPasword= await bcrypt.hash(username, saltRounds)
+        const hashedPasword= await bcrypt.hash(username, process.env.SALT_ROUNDS)
         const newBlogger= new Blogger({
             ...req.body,
             username: username,
-            email: email
+            email: email,
+            password: hashedPasword
         });
         await newBlogger.save();
         const passwordtoken =  jwt.sign({ _id: newBlogger.username},process.env.BLOGGER_PASSWORD_TOKEN, { expiresIn: "1d" }); // Use env variable for secret
@@ -42,14 +40,15 @@ const registerBloggerController= async( req,res,next)=> {
           return res.status(422).json({"message": "Unable to verify Email"})
         }
 
-        const bloggertoken=  jwt.sign({_id: newBlogger._id},process.env.BLOGGER_TOKEN,{expiresIn: "3d"})
-        res.cookie("bloggertoken", bloggertoken,{httpOnly: true}).status(201).json({"message": "BLogger Registered Successfuly"});
+        const bloggerToken=  jwt.sign({_id: newBlogger._id},process.env.BLOGGER_TOKEN,{expiresIn: "3d"})
         const welcomeBlogger= await BloggerWelcome(username,email, "www.google.com");
         if(welcomeBlogger){
             console.log("welcome mail send to the user")
+            return res.status(200).json({"message": "Blogger Registered Successfully","bloggerToken": bloggerToken})
           }
           else{
             console.log("welcome mail not send");
+            return res.status(201).json({"message": "Blogger Registered Successfully", "bloggerToken": bloggerToken})
           }
     }
     catch(err){
@@ -57,26 +56,25 @@ const registerBloggerController= async( req,res,next)=> {
     }
 };
 
-const refetchBloggerController= async(req,res)=> {
+const RefetchBloggerController= async(req,res)=> {
   try {
     // Check for token presence
-    const bloggertoken = req.cookies.bloggertoken;
-    if (!bloggertoken) {
+    const bloggerToken = req.params;
+    if (!bloggerToken) {
       return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
     }
 
     // Validate token using JWT verify
     try {
-      const decoded = jwt.verify(bloggertoken,process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
+      const decoded = jwt.verify(bloggerToken,process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
       const bloggerId = decoded._id;
-
       // Fetch user data using findOne()
       const blogger = await Blogger.findOne({ _id: bloggerId });
       if (!blogger) {
         return res.status(404).json({ message: "Blogger not found" }); // Use 404 for not found
       }
       else if(blogger.blocked){
-        return res.status(405).json({
+        return res.status(403).json({
           "message": "Your Account is blocked"
         })
       }
@@ -99,7 +97,7 @@ const refetchBloggerController= async(req,res)=> {
   }
 }
 
-const loginBloggerController= async(req,res)=>{
+const LoginBloggerController= async(req,res)=>{
     try{
         let blogger;
 
@@ -110,21 +108,19 @@ const loginBloggerController= async(req,res)=>{
             blogger= await Blogger.findOne({username: req.body.username})
         }
         else{
-            return res.status(400).json({error: "Please provide the username or the email."});
+            return res.status(401).json({error: "Please provide the username or the email."});
         }
         if(!blogger){
             // user does not found in the database
-            return  res.status(401).json({"messsage": "Invalid Credentials"})
+            return  res.status(404).json({"messsage": "Invalid Credentials"})
         }
         if(!blogger.blocked){
         const match= await bcrypt.compare(req.body.password, blogger.password )
         if(!match){
-            return res.status(403).json({"message": "Invalid Password"}) // Use 401 for incorrect password
+            return res.status(405).json({"message": "Invalid Password"}) // Use 401 for incorrect password
         }
         const {password, ...data}= blogger._doc;
-        const bloggertoken= jwt.sign({_id: blogger._id},process.env.BLOGGER_TOKEN,{expiresIn: "3d"} )
-        res.cookie("bloggertoken", bloggertoken, {httpOnly: true}).status(200).json(data);
-
+        const bloggerToken= jwt.sign({_id: blogger._id},process.env.BLOGGER_TOKEN,{expiresIn: "3d"} )
         const date = new Date();
         const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
         const hours = date.getHours() % 12 || 12;
@@ -135,14 +131,15 @@ const loginBloggerController= async(req,res)=>{
         // going to define the email for the blogger login notification
         const emailSend=await loginBloggerNotfyEmail(blogger.email, blogger.username,formattedDate, formattedTime, process.env.PASSWORD_RESET_URL);
       if(emailSend){
-        console.log("email also send");
+        return res.status(200).json({"message": "Blogger Logged in Successfully","bloggerToken": bloggerToken});
       }
       else{
         console.log("email not send");
+        return res.status(201).json({"message": "Blogger Logged in Successfully", "bloggerToken": bloggerToken});
       }
     }
     else{
-        return res.status(425).json({"message":"Your account is blocked"})
+        return res.status(403).json({"message":"Your account is blocked"})
       }
     }
     catch(err){
@@ -150,38 +147,17 @@ const loginBloggerController= async(req,res)=>{
     }
 }
 
-const logoutBloggerController = async(req, res)=>{
-  try {
-    // Check if the cookie exists before clearing
-    if (!req.cookies.bloggertoken) {
-      return res.status(401).json({ message: "BLogger not logged in" }); // 401 for unauthorized
-    }
-
-    // Clear the token cookie securely if present
-    res.clearCookie("bloggertoken", {
-      httpOnly: true,
-      sameSite: "none",
-      secure: true
-    });
-
-    // Respond with a success message
-    res.status(200).json({ message: "Blogger logged out successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Internal server error" }); // Generic error message
-  }
-}
-
-const updateBloggerProfileController= async (req,res,next)=>{
+const UpdateBloggerProfileController= async (req,res,next)=>{
     // here we are going to update the data related to the bio description, etc
     try {
         // Check for token presence
-        const bloggertoken = req.cookies.bloggertoken;
-        if (!bloggertoken) {
+        const bloggerToken = req.params;
+        if (!bloggerToken) {
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
         }
         // Validate token using JWT verify
         try {
-          const decoded = jwt.verify(bloggertoken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
+          const decoded = jwt.verify(bloggerToken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
           const bloggerId = decoded._id;
           // Fetch user data using findOne()
           const blogger = await Blogger.findOne({ _id: bloggerId });
@@ -189,7 +165,7 @@ const updateBloggerProfileController= async (req,res,next)=>{
             return res.status(404).json({ message: "Blogger not found" }); // Use 404 for not found
           }
           else if(blogger.blocked){
-            return res.status(405).json({
+            return res.status(403).json({
               "message": "Your Account is blocked"
             })
           }
@@ -241,27 +217,27 @@ const updateBloggerProfileController= async (req,res,next)=>{
 }
 
 
-const updateBloggerEmailGenerator= async(req,res,next)=>{
+const UpdateBloggerEmailGenerator= async(req,res,next)=>{
   try {
-    const bloggertoken= req.cookies.bloggertoken;
+    const bloggerToken= req.params;
     const {email}= req.body;
-    if(!bloggertoken){
-      return res.status(429).json({"message":"Token not found"})
+    if(!bloggerToken){
+      return res.status(401).json({"message":"Token not found"})
     }
     // Check for token presence
-   const loggedInBlogger= await findLoggedInBlogger(bloggertoken);
+   const loggedInBlogger= await findLoggedInBlogger(bloggerToken);
     if(loggedInBlogger.blocked){
-    return res.status(405).json({
+    return res.status(403).json({
      "message": "Your Account is blocked"
     });
    }
    else if(loggedInBlogger){
     if(!email){
-      return res.status(409).json({"message": "Please Enter the new email"})
+      return res.status(401).json({"message": "Please Enter the new email"})
     }
       // here we are going to check is the usr email is just same or different 
       if(email==loggedInBlogger.email){
-        return res.status(409).json({
+        return res.status(405).json({
           "message": "Email is same"
         })
       }
@@ -276,11 +252,11 @@ const updateBloggerEmailGenerator= async(req,res,next)=>{
         return res.status(200).json({"message": "Email sent to new Email"})
       }
       else{
-        return res.status(489).json({"message": "Error while Updating Email"})
+        return res.status(400).json({"message": "Error while Updating Email"})
       }
    }
    else{
-    return res.status(409).json({"message": "Internal Server Error, login again"});
+    return res.status(404).json({"message": "Internal Server Error, login again"});
    }
   } catch (err) {
     console.error("Unhandled error in refetchUserController:", err);
@@ -288,19 +264,19 @@ const updateBloggerEmailGenerator= async(req,res,next)=>{
   }
 }
 
-const updateBloggerEmailController= async(req, res,next)=>{
+const UpdateBloggerEmailController= async(req, res,next)=>{
      // here we are going to send the verification email to the user with the otp
      try {
         // Check for token presence
         const { email, emailChangeToken}= req.body;
-        const bloggertoken= req.cokkiess.bloggertoken;
+        const bloggerToken= req.params;
         if (!emailChangeToken) {
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
         }
-        if(!bloggertoken){
-          return res.status(469).json({"message": "Blogger token not found"})
+        if(!bloggerToken){
+          return res.status(401).json({"message": "Blogger token not found"})
         }
-        const loggedInBlogger= await findLoggedInBlogger(bloggertoken);
+        const loggedInBlogger= await findLoggedInBlogger(bloggerToken);
         // Validate token using JWT verify
         if(loggedInBlogger.blocked){
           return res.status(405).json({
@@ -343,25 +319,23 @@ const updateBloggerPictureController = async(req, res,next)=>{
 
 }
 
-const aviableBloggerUsernamesController= async(req,res,next)=>{
+const AviableBloggerUsernamesController= async(req,res,next)=>{
   try{
     const username = req.body.username; // Extract username from request body
 
     // Validate username format (optional but recommended)
     if (!username || !/^[a-zA-Z0-9._]+$/.test(username)) {
-      return res.status(400).json({ message: 'Invalid username format. Please use alphanumeric characters, periods (.), and underscores (_).' });
+      return res.status(401).json({ "message": 'Invalid username format. Please use alphanumeric characters, periods (.), and underscores (_).' });
     }    
     // Check if username already exists (case-insensitive)
     const existingBlogger = await Blogger.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
-
     if (existingBlogger) {
       // Username already taken, try suggesting similar usernames
       const suggestions = await suggestSimilarUsernames(username);
-      return res.status(409).json({ message: 'Username already taken.',suggestions: suggestions });
+      return res.status(400).json({ "message":" 'Username already taken.","suggestions": suggestions });
     }
-
     // Username is available, return success
-    return res.status(200).json({ available: true , "message": "User name is aviable"});
+    return res.status(200).json({ "available": true , "message": "User name is aviable"});
   }
   catch(err){
     //we are going to define the aviable usernames for the user
@@ -370,18 +344,18 @@ const aviableBloggerUsernamesController= async(req,res,next)=>{
 }
 
 
-const updateBloggerUsernameController= async(req, res,next)=>{
+const UpdateBloggerUsernameController= async(req, res,next)=>{
     try {
-      const bloggertoken= req.cokkies.bloggertoken;
+      const bloggerToken= req.params;
       const {username}= req.body;
         // Check for token presence
-        if(!bloggertoken){
-          return res.status(408).json({
+        if(!bloggerToken){
+          return res.status(401).json({
             "message": "Please Login"
           });
         }
         if(!username){
-          return res.status(408).json({"message": "Please Provide the new Username"});
+          return res.status(401).json({"message": "Please Provide the new Username"});
         }
         const loggedInBlogger= await findLoggedInBlogger(bloggertoken);
         if(loggedInBlogger.blocked){
@@ -393,7 +367,7 @@ const updateBloggerUsernameController= async(req, res,next)=>{
           if(existingBlogger){
             // we are going to get the suggestions of the avaible Usernames that are avaible
             const suggestions = await suggestSimilarUsernames(username);
-            return res.status(493).json({"message": "Username Already Exists"});
+            return res.status(401).json({"message": "Username Already Exists", "suggestions": suggestions});
           }
           loggedInBlogger.username= username;
            await loggedInBlogger.save();
@@ -408,54 +382,49 @@ const updateBloggerUsernameController= async(req, res,next)=>{
 }
 
 
-const resetBloggerPassword = async(req,res,next)=>{
+const ResetBloggerPasswordController = async(req,res,next)=>{
 // here we are going to send the forgot password to the users email 
- try {
-  // 1. Validate User Input
-  const { email, username } = req.body;
+  try {
+    // 1. Validate User Input
+    const { email, username } = req.body;
+    if (!email || !username) {
+      return res.status(401).json({ error: "Please provide either email or username." });
+    }
+    // 2. Find User Based on Email or Username
+    let blogger;
+    if (email) {
+      blogger = await Blogger.findOne({ email });
+    } else {
+      blogger = await Blogger.findOne({ username });
+    }
+    if (!blogger) {
+      return res.status(404).json({ "message": "No user found." });
+    }
 
-  if (!email && !username) {
-    return res.status(429).json({ error: "Please provide either email or username." });
+    const passwordToken = jwt.sign({ _id: blogger._id },process.env.PASSWORD_RESET_TOKEN, { expiresIn: "1d" }); // Use env variable for secret
+    blogger.passwordResetToken= passwordToken;
+    await blogger.save();
+    // 5. Send Password Reset Email (replace with your email sending logic)
+    const mailResult=await passwordsetEmail(blogger.username,blogger.email, process.env.PASSWORD_RESET_URL) // Assuming sendPasswordResetEmail function exists
+    if(mailResult){
+      return res.status(200).json({ message: "Password reset email sent successfully." });
+    }
+    else{
+      return res.status(400).json({"message": "Some error while sending the email"})
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "An error occurred. Please try again later." });
   }
-
-  // 2. Find User Based on Email or Username
-  let blogger;
-  if (email) {
-    blogger = await Blogger.findOne({ email });
-  } else {
-    blogger = await Blogger.findOne({ username });
-  }
-  if (!blogger) {
-    return res.status(404).json({ message: "No user found." });
-  }
-
-  const passwordtoken = jwt.sign({ _id: blogger._id },process.env.PASSWORD_RESET_TOKEN, { expiresIn: "1d" }); // Use env variable for secret
-  blogger.passwordResetToken= passwordtoken;
-  await blogger.save();
-
-  // 5. Send Password Reset Email (replace with your email sending logic)
-  const mailResult=await passwordsetEmail(blogger.username,blogger.email, process.env.PASSWORD_RESET_URL) // Assuming sendPasswordResetEmail function exists
-  if(mailResult){
-    return res.status(200).json({ message: "Password reset email sent successfully." });
-  }
-  else{
-    return res.status(430).json({"message": "Some erro while sending the email"})
-  }
-} catch (error) {
-  console.error(error);
-  return res.status(500).json({ error: "An error occurred. Please try again later." });
-}
 }
 
-const findBloggerByPrefixNameController = async( req, res,next)=>{
+const FindBloggerByPrefixNameController = async( req, res,next)=>{
   try {
     const {username} = req.body;  // Adjust based on how you pass the prefix
-    console.log(username)
     const blogger = await Blogger.find({
       username: { $regex: `^${username}`, $options: 'i' }
     }).limit(10);
-
-    if (!blogger.length && !blogger) {
+    if (!blogger.length || !blogger) {
       return res.json({ message: 'No bloggers found' });
     }
     return res.status(200).json({"message": "Bloggers found","data": blogger}); // Send the list of matching bloggers
@@ -465,11 +434,11 @@ const findBloggerByPrefixNameController = async( req, res,next)=>{
   }
 }
 
-const findAllBloggersController = async (req, res, next) => {
+const FindAllBloggersController = async (req, res, next) => {
   try {
     const pageNo= req.params;
     const skipSize= (pageNo-1)*10;
-    const bloggers = await Blogger.find().skip(skipSize).limit(10);
+    const bloggers = await Blogger.find({}).skip(skipSize).limit(10);
     const totalBloggers= await Blogger.countDocuments();
     return res.status(200).json({
       "message": "Fetched all bloggers",
@@ -486,7 +455,7 @@ const findAllBloggersController = async (req, res, next) => {
 };
 
 
-const updateBloggerPasswordController=async(req, res,next)=>{
+const UpdateBloggerPasswordController=async(req, res,next)=>{
     try {
       // Check for token presence
       const {password, passwordResetToken}= req.body;
@@ -505,7 +474,7 @@ const updateBloggerPasswordController=async(req, res,next)=>{
         // Fetch user data using findOne()
         const blogger = await Blogger.findOne({ _id: bloggerId });
         if (!blogger) {
-          return res.status(404).json({ message: "Blogger not found" }); // Use 404 for not found
+          return res.status(400).json({ message: "Blogger not found" }); // Use 404 for not found
         }
         else if(blogger.blocked){
           return res.status(405).json({
@@ -513,8 +482,7 @@ const updateBloggerPasswordController=async(req, res,next)=>{
           })
         }
         // so we had verified the newemail
-        const saltRounds= 10;
-        const hashedPassword= await bcrypt.hash(password,saltRounds);
+        const hashedPassword= await bcrypt.hash(password,process.env.SALT_ROUNDS);
         blogger.password= hashedPassword;
         blogger.passwordResetToken="";
         await blogger.save();
@@ -597,21 +565,16 @@ const updateBloggerPasswordController=async(req, res,next)=>{
   }
   
 module.exports= {
-    registerBloggerController, 
-    refetchBloggerController, 
-    loginBloggerController,
-     logoutBloggerController,
-    updateBloggerEmailController,
-     updateBloggerProfileController,
-    resetBloggerPassword,
-    updateBloggerPasswordController,
-    updateBloggerEmailGenerator,
-
-    // finding the bloggers
-    findBloggerByPrefixNameController,
-    findAllBloggersController,
-
-    updateBloggerPictureController, 
-    updateBloggerUsernameController,
-    aviableBloggerUsernamesController
+  RegisterBloggerController,
+  RefetchBloggerController,
+  LoginBloggerController,
+  UpdateBloggerProfileController,
+  UpdateBloggerEmailGenerator,
+  UpdateBloggerEmailController,
+  AviableBloggerUsernamesController,
+  UpdateBloggerUsernameController,
+  ResetBloggerPasswordController,
+  FindBloggerByPrefixNameController,
+  FindAllBloggersController,
+  UpdateBloggerPasswordController
 };

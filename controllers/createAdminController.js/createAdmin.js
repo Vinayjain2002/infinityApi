@@ -7,13 +7,13 @@ dotenv.config();
 
 
 // api testing is left
-const createAdminController = async (req, res, next) => {
+const CreateAdminController = async (req, res, next) => {
     try {
-      const adminToken= req.cookies.adminToken;
+      const adminToken= req.params;
       // these are the details of the Admin to whom we are gonna to make the admin
       const { adminemail, approvedadmin } = req.body;
-      if(!adminToken){
-        return res.status(410).json({"message": "Admin Please login"});
+      if(!adminemail || !approvedadmin || adminToken){
+        return res.status(401).json({"message": "All the required fields are not found"});
       }
       let decoded=jwt.verify(adminToken,process.env.ADMIN_TOKEN);
       const adminId= decoded._id;
@@ -24,20 +24,20 @@ const createAdminController = async (req, res, next) => {
       else if(!admin.approvedadmin){
         return res.status(410).json({"message": "You are not  approved as admin"})
       }
+      else if(admin.deletedAdminAccount){
+        return res.status(404).json({"message": "Admin Account is deleted"})
+      }
       else if(!admin.createOtherAdmin){
-        return res.status(411).json({
+        return res.status(410).json({
           "message": "You are not allowed to create other admins"
         })
       }
-      const existingAdmin = await Admin.findOne({ adminemail });
+      const existingAdmin = await Admin.findOne({"adminemail": adminemail });
       if (!existingAdmin) {
-        return res.status(406).json({ message: "Please first apply for admin" });
+        return res.status(404).json({ message: "Please first apply for admin" });
       }
-      if(!approvedadmin){
-        return res.status(435).json({"message": "Please Either approve the admin or reject it"});
-      }
-      if (approvedadmin && existingAdmin.approvedadmin) {
-        return res.status(409).json({ message: "You are already an approved admin" });
+      if (approvedadmin || existingAdmin.approvedadmin) {
+        return res.status(400).json({ message: "You are already an approved admin" });
       }
   
       existingAdmin.approvedadmin = approvedadmin; // Set based on request body
@@ -55,38 +55,38 @@ const createAdminController = async (req, res, next) => {
       if (req.body.announcementAcess) existingAdmin.announcementAccess = req.body.announcementAccess;
       if(req.body.festAccess) existingAdmin.festAccess= req.body.festAccess;
       await existingAdmin.save();
-      return res.status(200).json({ message: "Admin successfully approved" ,data: existingAdmin });
+      const {adminPasswordToken,adminMobileToken,adminpassword, ...data }= existingAdmin;
+      return res.status(200).json({ message: "Admin successfully approved" ,"data": existingAdmin });
     } catch (err) {
-      console.error(err); // Log specific error for debugging
-      res.status(err.statusCode || 500).json({ message: err.message || "Internal Server Error" });
+      res.status( 500).json({"message":"Internal Server Error" });
     }
   };
   
-  const updatePermissionController = async (req, res, next) => {
+  const UpdatePermissionController = async (req, res, next) => {
     try {
       const { email, ...accessUpdates } = req.body; // Destructure request body
-      const adminToken= req.cookies.adminToken;
+      const adminToken= req.params;
       // these are the details of the Admin to whom we are gonna to make the admin
       if(!adminToken){
-        return res.status(410).json({"message": "Admin Please login"});
+        return res.status(401).json({"message": "Admin Please login"});
       }
       let decoded=jwt.verify(adminToken,process.env.ADMIN_TOKEN);
       const adminId= decoded._id;
       const admin=await Admin.findById(adminId);
-      if(!admin){
+      if(!admin || admin.deletedAdmin){
         return res.status(404).json({ message: "Admin not found" }); // Use 404 for not found
       }
       else if(!admin.approvedadmin){
         return res.status(410).json({"message": "You are not  approved as admin"})
       }
       else if(!admin.createOtherAdmin){
-        return res.status(411).json({
+        return res.status(410).json({
           "message": "You are not allowed to create other admins"
         })
       }
-      const existingAdmin = await Admin.findOne({ email });
+      const existingAdmin = await Admin.findOne({ "adminemail": email });
       if (!existingAdmin) {
-        return res.status(406).json({ message: "Please first apply for admin" });
+        return res.status(404).json({ message: "Please first apply for admin" });
       }
   
       // Update access levels using spread operator and destructuring
@@ -99,20 +99,20 @@ const createAdminController = async (req, res, next) => {
       return res.status(200).json({ message: "Admin permissions updated successfully" });
     } catch (err) {
       console.error(err); // Log specific error for debugging
-      res.status(err.statusCode || 500).json({ message: err.message || "Internal Server Error" });
+      res.status(500).json({ "message": "Internal Server Error" });
     }
   };
   
 
-const deleteAdminController= async(req, res,next)=>{
+const DeleteAdminController= async(req, res,next)=>{
     // here we are going to delete the admin
     try{
       // we are gonna to define the logic to just delete the 
-      const adminToken= req.cookies.adminToken;
+      const adminToken= req.params;
       // these are the details of the Admin to whom we are gonna to make the admin
       const { adminemail} = req.body;
-      if(!adminToken){
-        return res.status(410).json({"message": "Admin Please login"});
+      if(!adminToken || adminemail){
+        return res.status(401).json({"message": "Admin Please login"});
       }
       let decoded=jwt.verify(adminToken,process.env.ADMIN_TOKEN);
       const adminId= decoded._id;
@@ -124,28 +124,29 @@ const deleteAdminController= async(req, res,next)=>{
         return res.status(410).json({"message": "You are not  approved as admin"})
       }
       else if(!admin.createOtherAdmin){
-        return res.status(411).json({
+        return res.status(410).json({
           "message": "You are not allowed to create other admins"
         })
       }
       const adminToBeDeleted= await Admin.findOne({adminemail: adminemail});
       if(!adminToBeDeleted){
-        return res.status(401).json({"message": "Admin Does not exists"});
+        return res.status(404).json({"message": "Admin Does not exists"});
       }
       adminToBeDeleted.deletedAdminAccount= true;
       await adminToBeDeleted.save();
+      return res.status(200).json({"message": "Admin Account Deleted Successfully"})
     }
     catch(err){
         return res.status(500).json({"message": "Internal Server Error"});
     }
 }
 
-const fetchAdminsController = async (req, res, next) => {
+const FetchAdminsController = async (req, res, next) => {
     try {
-      const adminToken= req.cookies.adminToken;
+      const adminToken= req.params;
       // these are the details of the Admin to whom we are gonna to make the admin
      if(!adminToken){
-        return res.status(410).json({"message": "Admin Please login"});
+        return res.status(401).json({"message": "Admin Please login"});
       }
       let decoded=jwt.verify(adminToken,process.env.ADMIN_TOKEN);
       const adminId= decoded._id;
@@ -155,6 +156,9 @@ const fetchAdminsController = async (req, res, next) => {
       }
       else if(!admin.approvedadmin){
         return res.status(410).json({"message": "You are not  approved as admin"})
+      }
+      else if(admin.deletedAdminAccount){
+        return res.status(410).json({"message": "Admin Account is deleted"})
       }
       const approvedAdmins = await Admin.find({ approvedAdmin: true });
       const responseData = approvedAdmins.map(admin => ({
@@ -170,14 +174,14 @@ const fetchAdminsController = async (req, res, next) => {
     }
   };
 
-  const fetchParticularAdminController = async (req, res, next) => {
+  const FetchParticularAdminController = async (req, res, next) => {
     try {
 
       const { adminemail } = req.body;
-      const adminToken= req.cookies.adminToken;
+      const adminToken= req.params;
       // these are the details of the Admin to whom we are gonna to make the admin
-      if(!adminToken){
-        return res.status(410).json({"message": "Admin Please login"});
+      if(!adminToken || !adminemail){
+        return res.status(401).json({"message": "Please Provide all valid Credentils"});
       }
       let decoded=jwt.verify(adminToken,process.env.ADMIN_TOKEN);
       const loggedInAdminId= decoded._id;
@@ -188,22 +192,17 @@ const fetchAdminsController = async (req, res, next) => {
       else if(!loggedInAdmin.approvedadmin){
         return res.status(410).json({"message": "You are not  approved as admin"})
       }
-      if(! adminemail){
-        return res.status(401).json({"messsage":"Please Provide the email"});
+      if(loggedInAdmin.deletedAdminAccount){
+        return res.status(410).json({"message": "Admin Account is deleted"})
       }
       // Find admin by email
       const admin= await Admin.findOne({adminemail: adminemail})
       if (!admin) {
         return res.status(404).json({ message: "Admin not found" }); // Use 404 for not found
-      }  
-      // Check approval status (if applicable)
-      if (!admin.approvedadmin && admin.deletedAdminAccount) {
-        return res.status(403).json({ message: "Unauthorized access to admin data" }); // Use 403 for forbidden access
-      }
-  
+      } 
       // Exclude sensitive data from response
       const { adminname, adminProfilePicture, adminBio, adminCoverPicture } = admin;
-      const adminData = { adminname, adminProfilePicture, adminBio, adminCoverPicture };        
+      const adminData = { "adminname": adminname,"profilePicture": adminProfilePicture,"bio": adminBio, "coverPicture": adminCoverPicture };        
       res.status(200).json({ message: "Successfully fetched admin data", data: adminData });
     } catch (err) {
       res.status(500).json({ message: "Internal Server Error" });
@@ -214,31 +213,47 @@ const fetchAdminsController = async (req, res, next) => {
 const AdminApplicationController= async(req, res,next)=>{
   // we are gonna to define the data of the 
     try{
-         const adminApplication = await Admin.find({ approvedadmin: false });
-
+      const adminToken= req.params;
+      // these are the details of the Admin to whom we are gonna to make the admin
+      if(!adminToken){
+        return res.status(401).json({"message": "Please Provide all valid Credentils"});
+      }
+      let decoded=jwt.verify(adminToken,process.env.ADMIN_TOKEN);
+      const loggedInAdminId= decoded._id;
+      const loggedInAdmin=await Admin.findById(loggedInAdminId);
+      if(!loggedInAdmin){
+        return res.status(404).json({ message: "Admin not found" }); // Use 404 for not found
+      }
+      else if(!loggedInAdmin.approvedadmin){
+        return res.status(410).json({"message": "You are not  approved as admin"})
+      }
+      if(loggedInAdmin.deletedAdminAccount){
+        return res.status(410).json({"message": "Admin Account is deleted"})
+      }
+      const adminApplication = await Admin.find({ approvedadmin: false });
       const responseData = adminApplication.map(admin => ({
         _id: admin._id,
         email: admin.adminemail,
         ProfilePicture: admin.adminProfilePicture
       }));
-      res.status(200).json({ message: "List of all approved admins", data: responseData });
+      res.status(200).json({ message: "List of all approved admins", "data": responseData });
     }
     catch(err){
         res.status(500).json({message: "Internal Server Error"});
     }
 }
 
-const deleteAdminApplicationController= async(req,res,next)=>{
+const DeleteAdminApplicationController= async(req,res,next)=>{
   try {
     // 1. Check for Admin Token and Extract Admin ID
-    const adminToken = req.cookies.adminToken;
+    const adminToken = req.params;
     if (!adminToken) {
       return res.status(401).json({ message: "Admin authorization required" }); // Use 401 for unauthorized access
     }
   
     const { adminId } = req.body;
     if (!adminId) {
-      return res.status(400).json({ message: "Missing admin ID in request body" }); // Use 400 for bad request
+      return res.status(401).json({ message: "Missing admin ID in request body" }); // Use 400 for bad request
     }
   
     // 2. Verify Admin Token and Retrieve Logged-In Admin Details
@@ -257,11 +272,11 @@ const deleteAdminApplicationController= async(req,res,next)=>{
   
     // 3. Authorization Checks for Logged-In Admin
     if (!loggedInAdmin.approvedAdmin || loggedInAdmin.deletedAdminAccount) {
-      return res.status(401).json({ message: "You are not authorized to delete admins" });
+      return res.status(410).json({ message: "You are not authorized to delete admins" });
     }
   
     if (!loggedInAdmin.createOtherAdmin) {
-      return res.status(403).json({ message: "You are not allowed to manage other admins" }); // Use 403 for forbidden action
+      return res.status(410).json({ message: "You are not allowed to manage other admins" }); // Use 403 for forbidden action
     }
   
     // 4. Search for Admin to Delete
@@ -272,7 +287,7 @@ const deleteAdminApplicationController= async(req,res,next)=>{
   
     // 5. Validation Checks for Admin to Delete
     if (admin.deletedAdminAccount) {
-      return res.status(410).json({ message: "Admin account is already deleted" }); // Use 410 for gone
+      return res.status(404).json({ message: "Admin account is already deleted" }); // Use 410 for gone
     }
   
     if (admin.approvedAdmin) {
@@ -282,11 +297,11 @@ const deleteAdminApplicationController= async(req,res,next)=>{
     // 6. Delete the Admin
     const deletedAdmin = await Admin.findByIdAndDelete(adminId);
     if (!deletedAdmin) {
-      return res.status(500).json({ message: "Error deleting admin" });
+      return res.status(400).json({ message: "Error deleting admin" });
     }
   
     // 7. Success Response
-    return res.status(200).json({ message: "Admin deleted successfully" });
+    return res.status(200).json({ "message": "Admin deleted successfully" });
   } catch (err) {
     console.error("Error deleting admin:", err); // Log the error for debugging
     return res.status(500).json({ message: "Internal server error" }); // Generic error message for the user
@@ -294,11 +309,11 @@ const deleteAdminApplicationController= async(req,res,next)=>{
   
 }
 module.exports= {
-    createAdminController,
-    updatePermissionController,
-    deleteAdminController,
-    fetchAdminsController,
-    fetchParticularAdminController,
+    CreateAdminController,
+    UpdatePermissionController,
+    DeleteAdminController,
+    FetchAdminsController,
+    FetchParticularAdminController,
     AdminApplicationController,
-    deleteAdminApplicationController
+    DeleteAdminApplicationController
 };

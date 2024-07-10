@@ -7,8 +7,8 @@ const Blog = require("../../models/Blogs");
 const getTopicBlogsController= async (req,res)=>{
     try{
         // const we are gonna to get the topic wise all teh blogs
-        const Topic= req.params;
-        const pageNo= req.params?.pageNo ?? 1;
+        const {blogTopic}= req.body;
+        const {pageNo}= req.params?.pageNo ?? 1;
         const skipLength= (pageNo-1)*10;
         if(!blogTopic){
             return res.status(401).json({"message": "Blog Topic is not find"});
@@ -26,12 +26,12 @@ const getTopicBlogsController= async (req,res)=>{
     }
 }
 
-const bloggerBlogsController= async(req,res,next)=>{
+const BloggerBlogsController= async(req,res,next)=>{
     try{
         //we are gonna to get all the blog of a Particular Blogger
         const pageNo= req.params?.pageNo ?? 1;
         const skipLength= (pageNo-1)*10;
-        const bloggerId= req.body;
+        const {bloggerId}= req.params;
         if(!bloggerId){
             return res.status(401).json({"message": "Blogger Id is not found"});
         }
@@ -46,11 +46,11 @@ const bloggerBlogsController= async(req,res,next)=>{
     }
 }
 
-const relatedBlogsController = async( req, res,next)=>{
+const RelatedBlogsController = async( req, res,next)=>{
     try{
         const { blogTopic, level, createdBy } = req.body;
         const pageNo = req.params?.pageNo ?? 1; // Set default page to 1
-        const skip = (pageNo - 1) * 10;
+        const skipLength = (pageNo - 1) * 10;
         const limit = 10;
     
         const filters = [];
@@ -64,7 +64,7 @@ const relatedBlogsController = async( req, res,next)=>{
           filters.push({ createdBy });
         }
     
-        const blogs = await Blog.find({ $and: filters }).skip(skip).limit(limit);
+        const blogs = await Blog.find({ $and: filters }).skip(skipLength).limit(limit);
     
         if (!blogs || blogs.length === 0) {
           return res.status(404).json({ message: "No Related Blogs Found" });
@@ -77,15 +77,18 @@ const relatedBlogsController = async( req, res,next)=>{
       }
     }
 
-const createBlogsController= async (req, res,next)=>{
-    const bloggertoken = req.cookies.bloggertoken;
-    if (!bloggertoken) {
+const CreateBlogsController= async (req, res,next)=>{
+    const bloggerToken = req.params;
+    if (!bloggerToken) {
       return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
     }
 
     // Validate token using JWT verify
     try {
-        const decoded = jwt.verify(bloggertoken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(bloggerToken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
+        if(!decoded){
+            return res.status(400).json({'message': "Invalid Token"})
+        }
         const bloggerId = decoded._id;
 
         // Fetch user data using findOne()
@@ -101,7 +104,7 @@ const createBlogsController= async (req, res,next)=>{
 
         // so the blogger id is not blocked and the blogger used to be exists
         const {blogTopic, blogContent,level, ...data }= req.body;
-        if(blogTopic== undefined && blogContent== undefined && level== undefined){
+        if(blogTopic== undefined || blogContent== undefined || level== undefined){
             return res.status(404).json({"message": "Credential's not found"});
         }
         const createBlog= new Blog({
@@ -125,19 +128,19 @@ const createBlogsController= async (req, res,next)=>{
     }
 }
 
-const editBlogsController= async(req, res,next)=>{
-    const bloggertoken = req.cookies.bloggertoken;
-    if (!bloggertoken) {
+const EditBlogsController= async(req, res,next)=>{
+    const bloggerToken = req.params;
+    if (!bloggerToken) {
       return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
     }
 
     // Validate token using JWT verify
     try {
-        const blogId= req.body;
+        const {blogId}= req.parmas;
         if(!blogId){
             return res.status(401).json({"message": "Blog Id is not present"});
         }
-      const decoded = jwt.verify(bloggertoken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
+      const decoded = jwt.verify(bloggerToken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
       const bloggerId = decoded._id;
 
       // Fetch user data using findOne()
@@ -188,14 +191,14 @@ const editBlogsController= async(req, res,next)=>{
     }
 }
 
-const getBlogsController= async(req,res,next)=>{
+const GetBlogsController= async(req,res,next)=>{
     try{
        const pageNo = req.params?.pageNo ?? 1 // Set default page to 1
         const skipLength= (pageNo-1)*10;
         // here we are going to find out all the blogs for the user
         const allBlogs= Blog.find({}).skip(skipLength).limit(10);
         if(!allBlogs){
-            return res.status(401).json({"message": "Error while finding the blogs"})
+            return res.status(404).json({"message": "Error while finding the blogs"})
         }
         return res.status(200).json({"message": "Blogs Fetched Succesfully", data: allBlogs});
     }
@@ -204,17 +207,16 @@ const getBlogsController= async(req,res,next)=>{
     }
 }
 
-const deleteBlogsController= async(req, res,next)=>{
+const DeleteBlogsController= async(req, res,next)=>{
     // here we are going to delete the blogs of the user
-    const bloggertoken = req.cookies.bloggertoken;
-    const blogId= req.body;
-    if (!bloggertoken) {
+    const {bloggertoken, blogId} = req.params;
+    if (!bloggerToken) {
       return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
     }
 
     // Validate token using JWT verify
     try {
-      const decoded = jwt.verify(bloggertoken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
+      const decoded = jwt.verify(bloggerToken, process.env.BLOGGER_TOKEN); // Replace "vinay" with your actual secret key
       const bloggerId = decoded._id;
 
       // Fetch user data using findOne()
@@ -249,4 +251,4 @@ const deleteBlogsController= async(req, res,next)=>{
         return res.status(500).json({"message": "Internal Server Error"});
     }
 }
-module.exports= {getTopicBlogsController, bloggerBlogsController, relatedBlogsController, createBlogsController,editBlogsController, getBlogsController, deleteBlogsController}
+module.exports= {getTopicBlogsController, BloggerBlogsController, RelatedBlogsController, CreateBlogsController,EditBlogsController, GetBlogsController, DeleteBlogsController}

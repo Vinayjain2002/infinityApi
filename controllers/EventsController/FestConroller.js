@@ -6,7 +6,7 @@ const Blogger= require("../../models/Blogger");
 const dotenv= require('dotenv');
 dotenv.config();
 
-const postFestController= async()=>{
+const PostFestController= async()=>{
     try{
         const {eventname, mode, lastDateToApply, description,queryContacts, registerationUrl,city,venue, ...data}= req.body;
         const EventPoster="";
@@ -16,13 +16,13 @@ const postFestController= async()=>{
           return res.status(400).json({ message: `Missing required fields: ${missingFields.join(', ')}` });
         }
         // so we had used to get all the mandatort details here 
-            const usertoken= req.cookies.usertoken;
-            if (!usertoken) {
+            const userToken= req.params;
+            if (!userToken) {
                 // here the token of the user is not find and the user need to login to post the events
                 return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
               }     
               try{
-                const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
+                const decoded= jwt.verify(userToken, process.env.USER_TOKEN);
                 const userId= decoded._id;
                 // now we are going to find out the details of teh user here extra like is he a valid user or not
                 const user=await User.findById(userId);
@@ -69,15 +69,15 @@ const postFestController= async()=>{
     }
 }
 
-const getAllFestsController = async () => {
+const GetAllFestsController = async () => {
     try {
       const pageNo= req.params?.pageNo ?? 1;
       const skipLength= (pageNo-1)*10;
       // Fetch all fests (consider filtering and sorting if needed)
       const allFests = await Fest.find({}).skip(skipLength).limit(10);
       const length= allFests.length;
-      if (!allFests && allFests.length === 0) {
-        return res.status(204).json({ message: "No fests found" });
+      if (!allFests || allFests.length === 0) {
+        return res.status(404).json({ message: "No fests found" });
       }
   
       return res.status(200).json({ message: "Successfully fetched all fests", data: allFests,length: length});
@@ -87,7 +87,7 @@ const getAllFestsController = async () => {
     }
   };
   
-const getFestsByLocationController = async () => {
+const GetFestsByLocationController = async () => {
     try {
       const { location } = req.body;
       const pageNo= req.params?.pageNo ?? 1;
@@ -111,7 +111,7 @@ const getFestsByLocationController = async () => {
 
 
 
-  const getParticularFestController = async (req,res,next) => {
+  const GetParticularFestController = async (req,res,next) => {
     try {
       const { festId } = req.params; // Assuming ID is passed in request params
   
@@ -138,7 +138,7 @@ const getFestsByLocationController = async () => {
   };
   
 
-const getFestsByDateController = async () => {
+const GetFestsByDateController = async () => {
     try {
       const { dateOfPosting, lastDateToApply, both } = req.body;
       const pageNo= req.params?.pageNo ?? 1;
@@ -178,7 +178,7 @@ const getFestsByDateController = async () => {
   };
 
 
-const getUserPreferenceFestsController = async () => {
+const GetUserPreferenceFestsController = async () => {
     try {
       const {postedBy,eventname,mode ,city, entryFee, lastDateToApply, hashtags,organisedUnder, organiser } = req.body;
       const {pageNo}= req.params?.pageNo ?? 1;
@@ -217,7 +217,7 @@ const getUserPreferenceFestsController = async () => {
       // Fetch fests based on filters (use $and operator for multiple filters)
       const findFests = await Fest.find({ $and: filters }).skip(skipLength).limit(10); // Combine filters using $and operator
   
-      if (!findFests || findFests.length === 0) {
+      if (!findFests || findFests.length == 0) {
         return res.status(204).json({ message: "No fests found matching your preferences" });
       }
   
@@ -230,19 +230,18 @@ const getUserPreferenceFestsController = async () => {
 
 
   
-  const deleteFestController= async()=>{
+  const DeleteFestController= async()=>{
     try{
       // going to delete the Project Details
-      const {festId}= req.params; // send the data in the form of the Bootcamp id
+      const {festId, userToken}= req.params; // send the data in the form of the Bootcamp id
       if(!festId){
         return res.status(401).json({"message": "Fest Id is missing"})
       }
       // we are going to change the Project Details
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
+      if(!userToken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
+      const decoded= jwt.verify(userToken, process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -282,21 +281,20 @@ const getUserPreferenceFestsController = async () => {
   }
   }
 
-  const updateFestController= async(req,res,next)=>{
+  const UpdateFestController= async(req,res,next)=>{
     try{
       // going to delete the Project Details
-      const {festId}= req.params;
+      const {festId, userToken}= req.params;
       const {updatedFestData}= req.body;
 
       if(!festId){
           return res.status(401).json({"message": "Fest Id is missing"})
       }
       // we are going to change the Project Details
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
+      if(!userToken){
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
       }
-      const decoded= jwt.verify(usertoken,process.env.USER_TOKEN);
+      const decoded= jwt.verify(userToken,process.env.USER_TOKEN);
       const userId= decoded._id;
               // now we are going to find out the details of teh user here extra like is he a valid user or not
       const user=await User.findById(userId);
@@ -328,16 +326,16 @@ const getUserPreferenceFestsController = async () => {
   }
 
 
-  const savedFestController = async (req, res, next) => {
+  const SavedFestController = async (req, res, next) => {
     try {
         // here we are going to get the data that is saved by the user
-        const usertoken = req.cookies.usertoken;
-        if (!usertoken) {
+        const userToken = req.params;
+        if (!userToken) {
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try {
             // we are going to find out the details of the user
-            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+            const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -367,19 +365,18 @@ const getUserPreferenceFestsController = async () => {
     }
   };
   
-  const saveFestController= async(req,res,next)=>{
+  const SaveFestController= async(req,res,next)=>{
     try{
         // here we are going to define the route to save the Projects for the users
-        const {festId}= req.params;
+        const {festId, userToken}= req.params;
         if(!festId){
             return res.status(404).json({"message": "Fest id is missing"})
         }
-        const usertoken= req.cookies.usertoken;
-        if(!usertoken){
+        if(!userToken){
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try{
-            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+            const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -401,27 +398,14 @@ const getUserPreferenceFestsController = async () => {
     }
   }
   
-const getRandomFestsContoller= async(req,res,next)=>{
+const GetRandomFestsContoller= async(req,res,next)=>{
     // here we are going to define the route to get any random No of the Hackathons
     try{
       const {pageNo}= req.params?.pageNo ?? 1;
-      const usertoken= req.cookies.usertoken;
-      if(!usertoken){
-          return res.status(401).json({ message: "Unauthorized: Token not found" });
-      }
-      try{
-          const decoded = jwt.verify(usertoken,process.env.USER_TOKEN);
-          const userId = decoded._id;
-          const user = await User.findById(userId);
-          if (!user) {
-              return res.status(404).json({ message: "User not found" });
-          } else if (user.blocked) {
-              return res.status(405).json({ message: "Your Account is blocked" });
-          }
           const skipLength= (pageNo-1)*20;
           // here we are going to fetch the new no of the newLength of the data 
           const fest=await Fest.find({}).skip(skipLength).limit(20);
-          if(!fest && fest.length==0){
+          if(!fest || fest.length==0){
               return res.status(401).json({"message": "No Fest Found"});
           }
           // so we used to find out the first 20 hackathons and now we need to return the 10 random Hackathons
@@ -435,29 +419,25 @@ const getRandomFestsContoller= async(req,res,next)=>{
           const firstTenFest= fest.slice(0,10);
         
           return res.status(200).json({"message": "Fests Fetched Successfully", data: firstTenFest, length:10}); 
-      }
+        }
       catch(err){
           return res.status(500).json({"message": "Internal Server Error"})
       }
-  }
-  catch(err){
-      return res.status(500).json({"message": "Internal Server Error"})
-  }
 }
   
   
 
 module.exports= {
-  postFestController,
-  getAllFestsController,
-  getUserPreferenceFestsController,
-  deleteFestController,
-  updateFestController,
-  getParticularFestController,
-  saveFestController,
-  savedFestController
-  ,getFestsByDateController,
-   getFestsByLocationController,
-    getRandomFestsContoller
+  PostFestController,
+  GetAllFestsController,
+  GetUserPreferenceFestsController,
+  DeleteFestController,
+  UpdateFestController,
+  GetParticularFestController,
+  SaveFestController,
+  SavedFestController
+  ,GetFestsByDateController,
+   GetFestsByLocationController,
+    GetRandomFestsContoller
 // need to be defined
   };

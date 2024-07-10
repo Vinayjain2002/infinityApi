@@ -3,7 +3,8 @@ const mongoose= require("mongoose")
 const calendarSchema= mongoose.Schema({
         userId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "User"
+            ref: "User",
+            required: true
         },
         name: {
             type: String,
@@ -33,7 +34,7 @@ const calendarSchema= mongoose.Schema({
        ],
        category: [
         {
-            type: String,
+            type: String
         }
        ]
 });

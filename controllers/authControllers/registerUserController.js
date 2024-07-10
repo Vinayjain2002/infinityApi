@@ -11,7 +11,7 @@ dotenv.config();
 // ONly the cahange of the userprofile Picture is left
 
 
-const registerUserController = async (req, res) => {
+const RegisterUserController = async (req, res) => {
   // we need to first check the email or the phone no first
     try {
         const { username, email,mobileNo } = req.body;
@@ -22,8 +22,7 @@ const registerUserController = async (req, res) => {
         if (existingUser) {
             return res.status(409).json({ message: "Email or username already exists" }); // Use 409 for conflict
         }
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(username, saltRounds);
+        const hashedPassword = await bcrypt.hash(username,process.env.SALT_ROUNDS);
         const newUser = new User({
             username:username,
             email: email,
@@ -38,18 +37,17 @@ const registerUserController = async (req, res) => {
         if(!passwordResetEmail){
           // we are going to delete the user details as it may leads to the comflict when the user will try t reregister on the app
           await User.findOneAndDelete({_id: newUser._id});
-          return res.status(422).json({"message": "Unable to verify Email"})
+          return res.status(410).json({"message": "Unable to verify Email"})
         }
         // going to define the cookies for the again auto logging
-        const usertoken= jwt.sign({_id: newUser._id},process.env.USER_TOKEN, {expiresIn: "3d"});
+        const userToken= jwt.sign({_id: newUser._id},process.env.USER_TOKEN, {expiresIn: "3d"});
         const welcomeuser= await welcomeUserEmail(email,username, "www.google.com");
         if(welcomeuser){
           console.log("welcome mail send to the user");
-          res.cookie("usertoken", usertoken, {httpOnly: true}).status(200).json({"message": "User registered Successfully and welcome mail send"})
+          return res.status(200).json({"message":"Welcome Email Send and user Created Succesfully", "userToken": userToken})
         }
         else{
-          console.log("welcome mail not send");
-          res.cookie("usertoken", usertoken, {httpOnly: true}).status(200).json({"message": "User registered Successfully but welcome mail not send"})
+          return res.status(201).json({"message": ""})
         }
     } catch (err) {
         console.error(err); // Log the error for debugging
@@ -57,18 +55,21 @@ const registerUserController = async (req, res) => {
     }
 };
 
-const loginUserController = async (req, res) => {
+const LoginUserController = async (req, res) => {
     try {
+      if(!req.body.password){
+        return res.status(401).json({"message": "Password is not defined"});
+      }
       let user;
       if (req.body.email) {
         user = await User.findOne({ email: req.body.email });
       } else if (req.body.username) {
         user = await User.findOne({ username: req.body.username });
       } else {
-        return res.status(404).json({ error: "Provide valid username or email" }); // Use 400 for bad request
+        return res.status(401).json({ error: "Provide valid username or email" }); // Use 400 for bad request
       }
       if (!user) {
-        return res.status(401).json({"message": "User does not exists"})
+        return res.status(404).json({"message": "User does not exists"})
       }
       if(!user.blocked){
         const match = await bcrypt.compare(req.body.password, user.password); // Compare hashed password
@@ -76,9 +77,8 @@ const loginUserController = async (req, res) => {
             return res.status(403).json({"message": "Invalid Password"}) // Use 401 for incorrect password
           }
       
-          const { password, ...data } = user._doc;
-          const usertoken = jwt.sign({ _id: user._id },process.env.USER_TOKEN, { expiresIn: "3d" }); // Use env variable for secret
-          res.cookie("usertoken", usertoken, { httpOnly: true }).status(200).json(data); // Set httpOnly for security
+          const userToken = jwt.sign({ _id: user._id },process.env.USER_TOKEN, { expiresIn: "3d" }); // Use env variable for secret
+          const {passwordResetToken, emailChangeToken, password, ...data}= user;
           const date = new Date();
           const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
 
@@ -91,9 +91,11 @@ const loginUserController = async (req, res) => {
           const emailSend=await loginUserNotfyEmail(user.email,user.username,formattedDate, formattedTime, process.env.PASSWORD_RESET_URL);
           if(emailSend){
             console.log("email also send");
+            return res.status(200).json({"message": "Login, Notification Email also send","userToken": userToken, "data": data});
           }
           else{
             console.log("email not send");
+            return res.status(200).json({"message": "Login, Notification not send", "userToken": userToken, "data": data});
           }
       }
       else{
@@ -105,38 +107,17 @@ const loginUserController = async (req, res) => {
     }
   };
 
-  const logoutUserController = async (req, res) => {
-    try {
-      // Check if the cookie exists before clearing
-      if (!req.cookies.usertoken) {
-        return res.status(401).json({ message: "User not logged in" }); // 401 for unauthorized
-      }
-  
-      // Clear the token cookie securely if present
-      res.clearCookie("usertoken", {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true
-      });
-  
-      // Respond with a success message
-      res.status(200).json({ message: "User logged out successfully" });
-    } catch (err) {
-      res.status(500).json({ message: "Internal server error" }); // Generic error message
-    }
-  };
-
-  const refetchUserController = async (req, res) => {
+  const RefetchUserController = async (req, res) => {
     try {
       // Check for token presence
-      const usertoken = req.cookies.usertoken;
-      if (!usertoken) {
+      const userToken = req.params;
+      if (!userToken) {
         return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
       }
   
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(usertoken, process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(userToken, process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
   
         // Fetch user data using findOne()
@@ -145,12 +126,12 @@ const loginUserController = async (req, res) => {
           return res.status(404).json({ message: "User not found" }); // Use 404 for not found
         }
         else if(user.blocked){
-          return res.status(405).json({
+          return res.status(403).json({
             "message": "Your Account is blocked"
           })
         }
         const {password, passwordResetToken,emailChangeToken,...data}= user._doc;
-        res.status(200).json(data);
+        return res.status(200).json({"message": "User details fetched Successfully", "data": data});
       } catch (err) {
         console.error("Error verifying token or fetching user:", err); // Log specific error details for debugging
         // Handle specific errors (e.g., token expiration, database errors)
@@ -171,25 +152,25 @@ const loginUserController = async (req, res) => {
   //todo we need to add the functionality of the socialMedia, preffered Location , preffered Events 
 
 
-  const updateUserProfile= async(req, res,next)=>{
+  const UpdateUserProfileController= async(req, res,next)=>{
      // here we are going to update the profile of the user and we will not send any notifcations to the user for that
      try {
       // Check for token presence
-      const usertoken = req.cookies.usertoken;
-      if (!usertoken) {
+      const userToken = req.params;
+      if (!userToken) {
         return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
       }
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(usertoken,process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(userToken,process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
         // Fetch user data using findOne()
-        const user = await User.findOne({ _id: userId });
+        const user = await User.findOneById(userId);
         if (!user) {
           return res.status(404).json({ message: "User not found" }); // Use 404 for not found
         }
         else if(user.blocked){
-          return res.status(405).json({
+          return res.status(403).json({
             "message": "Your Account is blocked"
           })
         }
@@ -249,40 +230,40 @@ const loginUserController = async (req, res) => {
     }  }
   
     
-  const updateUserEmailGenerator= async(req, res,next)=>{
+  const UpdateUserEmailGenerator= async(req, res,next)=>{
       // here we are going to send the verification email to the user with the otp
       try {
-        const usertoken= req.cookies.usertoken;
+        const userToken= req.params;
         const {email}= req.body;
+        if(!email){
+          return res.status(401).json({"message": "Please Enter the new user email"})
+        }
           // we are gonna to check weather a user exists with that particular id or not
         const user=await User.findOne({email: email});
-        if(user){
+        if(!user){
           return res.status(409).json({"message": "This Email is Already Registered"})
         }
-        if(!usertoken){
-          return res.status(429).json({"message":"Token not found"})
+        if(!userToken){
+          return res.status(401).json({"message":"Token not found"})
         }
         // Check for token presence
-       const loggedInUser= await findLoggedInUser(usertoken);
+       const loggedInUser= await findLoggedInUser(userToken);
        
         if(loggedInUser.blocked){
-        return res.status(405).json({
+        return res.status(403).json({
          "message": "Your Account is blocked"
         });
        }
        else if(loggedInUser){
-        if(!email){
-          return res.status(409).json({"message": "Please Enter the new user email"})
-        }
           // here we are going to check is the usr email is just same or different 
           if(email==loggedInUser.email){
-            return res.status(409).json({
-              "message": "Email is same"
+            return res.status(405).json({
+              "message": "Email already exists"
             })
           }
           // so the mails are not same and we are going to send a email with a token to the user
-          const emailtoken = jwt.sign({ _id:loggedInUser._id },process.env.EMAIL_RESET_TOKEN, { expiresIn: "1d" }); // Use env variable for secret
-          loggedInUser.emailChangeToken= emailtoken;
+          const emailToken = jwt.sign({ _id: email },process.env.EMAIL_RESET_TOKEN, { expiresIn: "1d" }); // Use env variable for secret
+          loggedInUser.emailChangeToken= emailToken;
           await loggedInUser.save();
           // going to send the email to the user for the email reset. url contains username, newEmail, token
           const resetEmail= await resetUserEmail(email,loggedInUser.username,"www.google.com");
@@ -290,11 +271,11 @@ const loginUserController = async (req, res) => {
             return res.status(200).json({"message": "Email sent to new Email"})
           }
           else{
-            return res.status(489).json({"message": "Error while Updating Email"})
+            return res.status(400).json({"message": "Error while Sending Email"})
           }
        }
        else{
-        return res.status(409).json({"message": "Internal Server Error, login again"});
+        return res.status(404).json({"message": "Internal Server Error, login again"});
        }
       } catch (err) {
         console.error("Unhandled error in refetchUserController:", err);
@@ -302,31 +283,29 @@ const loginUserController = async (req, res) => {
       }
   }
 
-  const updateUserEmailController= async(req,res,next)=>{
+  const UpdateUserEmailController= async(req,res,next)=>{
     // here we will be going to update the user email
     try {
       // Check for token presence
-      const { email, emailChangeToken}= req.body;
-      const usertoken= req.cookies.usertoken;
-      if (!emailChangeToken) {
+      const {emailChangeToken}= req.body;
+      const userToken= req.params;
+      if (!emailChangeToken || !userToken) {
         return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
       }
-      if(!usertoken){
-          return res.status(429).json({"message":"User Token not found"})
-        }
         // Check for token presence
-       const loggedInUser= await findLoggedInUser(usertoken);
+       const loggedInUser= await findLoggedInUser(userToken);
        
         if(loggedInUser.blocked){
-        return res.status(405).json({
+        return res.status(403).json({
          "message": "Your Account is blocked"
         });
        }
           else if(loggedInUser){
               // Verify token and get user// Validate token using JWT verify
             const decoded = jwt.verify(emailChangeToken, process.env.EMAIL_RESET_TOKEN); // Replace "vinay" with your actual secret key
-            const userId = decoded._id;
-      
+            const email= decoded.email;
+            const userDecoded= jwt.verify(userToken, process.env.USER_TOKEN);
+            const userId= userDecoded._id;
             // Fetch user data using findOne()
             const user = await User.findById(userId);
             if (!user) {
@@ -344,7 +323,7 @@ const loginUserController = async (req, res) => {
             return res.status(200).json("Email Updated Successfully")
         }
        else{
-        return res.status(409).json({"message": "Internal Server Error, login again"});
+        return res.status(400).json({"message": "Internal Server Error, login again"});
        }
       } 
      catch (err) {
@@ -353,68 +332,68 @@ const loginUserController = async (req, res) => {
     }
   }
 
-  const updateUserPicture= async(req, res,next)=>{
-      try{
-        // we are going to first check is the user logged in or not
-        const usertoken= req.cookies.usertoken;
-        if(!usertoken){
-          return res.status(408).json({
-            "message": "Please login"
-          });
-        }
-        const loggedInUser= await findLoggedInUser(usertoken);
-        if(loggedInUser.blocked){
-          return res.status(429).json({"message": "Your account is blocked"})
-        }
-        else if(loggedInUser){
-          //we are going to check the files uploaded by the user for the images
-         const profilePicPath= req.files?.profilePicture[0]?.path;
-         console.log(profilePicPath)
-         const coverPicPath= req.files?.coverPicture[0]?.path;
-         console.log(coverPicPath)
-         // now we are going to update those data inside our database also
-         if(profilePicPath){
-             const profilePicture=await uploadOnCloudinary(profilePicPath);
-             if(!profilePicture){
-               // we failed to upload the image on the Cloudinary
-               res.status(408).json({
-                 "message": "Error While Updating the image"
-               });
-             }
-             loggedInUser.profilePicture= profilePicture;
-         }
-         else{
-          console.log("please provide the file path")
-         }
-         if(coverPicPath){
-           // so user had also uploaded the cover Picture Path
-          const coverPicture= await uploadOnCloudinary(coverPicPath);
-          if(!coverPicture){
-           // we failed to upload the image on the cloudinarry
-           res.status(408).json({
-             "message": "Error while Updating the image"
-           });
-          }
-          loggedInUser.coverPicture= coverPicture;
-         }
-         else{
-          console.log("error while updating the picture")
-         }
-         loggedInUser.save();
-         return res.status(200).json({
-          "message": "Pictures updated Successfully"
-         })
-        }
-      }
-      catch(err){
-        console.log(err)
-          return res.status(400).json({"message": "Internal Server Error"})
-      }
-  }
+  // const UpdateUserPicture= async(req, res,next)=>{
+  //     try{
+  //       // we are going to first check is the user logged in or not
+  //       const usertoken= req.cookies.usertoken;
+  //       if(!usertoken){
+  //         return res.status(408).json({
+  //           "message": "Please login"
+  //         });
+  //       }
+  //       const loggedInUser= await findLoggedInUser(usertoken);
+  //       if(loggedInUser.blocked){
+  //         return res.status(429).json({"message": "Your account is blocked"})
+  //       }
+  //       else if(loggedInUser){
+  //         //we are going to check the files uploaded by the user for the images
+  //        const profilePicPath= req.files?.profilePicture[0]?.path;
+  //        console.log(profilePicPath)
+  //        const coverPicPath= req.files?.coverPicture[0]?.path;
+  //        console.log(coverPicPath)
+  //        // now we are going to update those data inside our database also
+  //        if(profilePicPath){
+  //            const profilePicture=await uploadOnCloudinary(profilePicPath);
+  //            if(!profilePicture){
+  //              // we failed to upload the image on the Cloudinary
+  //              res.status(408).json({
+  //                "message": "Error While Updating the image"
+  //              });
+  //            }
+  //            loggedInUser.profilePicture= profilePicture;
+  //        }
+  //        else{
+  //         console.log("please provide the file path")
+  //        }
+  //        if(coverPicPath){
+  //          // so user had also uploaded the cover Picture Path
+  //         const coverPicture= await uploadOnCloudinary(coverPicPath);
+  //         if(!coverPicture){
+  //          // we failed to upload the image on the cloudinarry
+  //          res.status(408).json({
+  //            "message": "Error while Updating the image"
+  //          });
+  //         }
+  //         loggedInUser.coverPicture= coverPicture;
+  //        }
+  //        else{
+  //         console.log("error while updating the picture")
+  //        }
+  //        loggedInUser.save();
+  //        return res.status(200).json({
+  //         "message": "Pictures updated Successfully"
+  //        })
+  //       }
+  //     }
+  //     catch(err){
+  //       console.log(err)
+  //         return res.status(400).json({"message": "Internal Server Error"})
+  //     }
+  // }
 
-  const avaibleUserUsernamesController= async(req, res,next)=>{
+  const AvaibleUserUsernamesController= async(req, res,next)=>{
       try{
-        const username = req.body.username; // Extract username from request body
+        const {username} = req.body; // Extract username from request body
 
         // Validate username format (optional but recommended)
         if (!username || !/^[a-zA-Z0-9._]+$/.test(username)) {
@@ -426,11 +405,11 @@ const loginUserController = async (req, res) => {
         if (existingUser) {
           // Username already taken, try suggesting similar usernames
           const suggestions = await suggestSimilarUsernames(username);
-          return res.status(409).json({ message: 'Username already taken.',suggestions: suggestions });
+          return res.status(410).json({ "message": 'Username already taken.',"suggestion": suggestions });
         }
     
         // Username is available, return success
-        return res.status(200).json({ available: true , "message": "User name is aviable"});
+        return res.status(200).json({ "available": true , "message": "User name is aviable"});
       }
       catch(err){
         //we are going to define the aviable usernames for the user
@@ -438,24 +417,24 @@ const loginUserController = async (req, res) => {
       }
   }
 
-  const updateUserUsernamesController= async(req,res,next)=>{
+  const UpdateUserUsernamesController= async(req,res,next)=>{
     try {
       // Check for token presence
-      const usertoken= req.cookies.usertoken;
+      const userToken= req.params;
       const {username}= req.body;
-      if(!usertoken){
-        return res.status(408).json({
+      if(!userToken){
+        return res.status(401).json({
           "message": "Please login"
         });
       }
       if(!username){
-        return res.status(490).json({
+        return res.status(401).json({
           "message": "Please provide the new username"
         })
       }
       const loggedInUser= await findLoggedInUser(usertoken);
       if(loggedInUser.blocked){
-        return res.status(429).json({"message": "Your account is blocked"})
+        return res.status(403).json({"message": "Your account is blocked"})
       }
       else if(loggedInUser){
         // here we are going to check weather the username is aviable or not
@@ -469,7 +448,7 @@ const loginUserController = async (req, res) => {
        await loggedInUser.save();
         return res.status(200).json({"message": "Username Updated Succesfully"});
       }else{
-        return;
+        return res.status(400).json({"message": "Error while deccoding the details"});
       }
     } catch (err) {
       console.error("Unhandled error in refetchUserController:", err);
@@ -477,13 +456,13 @@ const loginUserController = async (req, res) => {
     }
   }
 
-  const resetUserPassword= async(req,res,next)=>{
+  const ResetUserPassword= async(req,res,next)=>{
  // here we are going to send the forgot password to the users email 
       try {
         // 1. Validate User Input
         const { email, username } = req.body;
-        if (!email && !username) {
-          return res.status(429).json({ error: "Please provide either email or username." });
+        if (!email  || !username) {
+          return res.status(401).json({ error: "Please provide either email or username." });
         }
 
         // 2. Find User Based on Email or Username
@@ -507,7 +486,7 @@ const loginUserController = async (req, res) => {
           return res.status(200).json({ message: "Password reset email sent successfully." });
         }
         else{
-          return res.status(430).json({"message": "Some erro while sending the email"})
+          return res.status(404).json({"message": "Some error while sending the email"})
         }
       } catch (error) {
         console.error(error);
@@ -515,15 +494,14 @@ const loginUserController = async (req, res) => {
       }
   }
 
-  const findUserByPrefixNameController = async( req, res,next)=>{
+  const FindUserByPrefixNameController = async( req, res,next)=>{
     try {
       const {username} = req.body;  // Adjust based on how you pass the prefix
-      console.log(username)
       const user = await User.find({
         username: { $regex: `^${username}`, $options: 'i' }
       }).limit(10);
   
-      if (!user.length && !user) {
+      if (user.length==0 || !user) {
         return res.json({ message: 'No User found' });
       }
       return res.status(200).json({"message": "User found","data": user}); // Send the list of matching bloggers
@@ -533,10 +511,11 @@ const loginUserController = async (req, res) => {
     }
   }
 
-  const updateUserPasswordController=async(req, res,next)=>{
+  const UpdateUserPasswordController=async(req, res,next)=>{
     try {
       // Check for token presence
-      const {password, passwordResetToken}= req.body;
+      const passwordResetToken= req.params;
+      const {password}= req.body;
       if (!passwordResetToken) {
         return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
       }
@@ -545,7 +524,6 @@ const loginUserController = async (req, res) => {
       try {
         
         const decoded = jwt.verify(passwordResetToken,process.env.PASSWORD_RESET_TOKEN); // Replace "vinay" with your actual secret key
-        console.log("hello")
         const userId = decoded._id;
   
         // Fetch user data using findOne()
@@ -554,13 +532,12 @@ const loginUserController = async (req, res) => {
           return res.status(404).json({ message: "User not found" }); // Use 404 for not found
         }
         else if(user.blocked){
-          return res.status(405).json({
+          return res.status(403).json({
             "message": "Your Account is blocked"
           })
         }
         // so we had verified the newemail
-        const saltRounds=10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const hashedPassword = await bcrypt.hash(password, process.env.SALT_ROUNDS);
 
         user.password= hashedPassword;
         user.passwordResetToken="";
@@ -583,12 +560,12 @@ const loginUserController = async (req, res) => {
     }
   }
 
-  const followUserController = async (req, res, next) => {
+  const FollowUserController = async (req, res, next) => {
     try {
-      const usertoken = req.cookies.usertoken;
+      const userToken = req.params;
       const { userId } = req.body;
-      if (!usertoken) {
-        return res.status(405).json({ message: "Please First login in your account" });
+      if (!userToken) {
+        return res.status(401).json({ message: "Please First login in your account" });
       }
       let loggedInUser;
       try {
@@ -597,7 +574,7 @@ const loginUserController = async (req, res) => {
           return res.status(401).json({ message: "Unauthorized" });
         }
         if (loggedInUser.blocked) {
-          return res.status(480).json({ message: "Your Account is blocked" });
+          return res.status(403).json({ message: "Your Account is blocked" });
         }
       } catch (err) {
         console.error("Error finding logged in user:", err);
@@ -606,19 +583,19 @@ const loginUserController = async (req, res) => {
 
 
       if (!userId) {
-        return res.status(400).json({ message: "Missing user ID to follow" });
+        return res.status(401).json({ message: "Missing user ID to follow" });
       }
 
       const userToFollow = await User.findById(userId);
       if (!userToFollow) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(402).json({ message: "User not found" });
       }
 
       if (loggedInUser.following.includes(userId)) {
         return res.status(400).json({ message: "Already included in the following list" });
       }
       if (loggedInUser.blockedList.includes(userId)) {
-        return res.status(415).json({ message: "Unblock user first" });
+        return res.status(409).json({ message: "Unblock user first" });
       }
 
       // Add user to following list
@@ -643,26 +620,26 @@ const loginUserController = async (req, res) => {
   };
 
 
-  const unfollowUserController = async (req, res, next) => {
+  const UnfollowUserController = async (req, res, next) => {
     try {
-      const usertoken= req.cookies.usertoken;
-      if (!usertoken) {
-        return res.status(405).json({ message: "Please First login in your account" });
+      const userToken= req.params;
+      if (!userToken) {
+        return res.status(401).json({ message: "Please First login in your account" });
       }
       const loggedInUser = await findLoggedInUser(usertoken);
       if (!loggedInUser) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       if (loggedInUser.blocked) {
-        return res.status(480).json({ message: "Your Account is blocked" });
+        return res.status(403).json({ message: "Your Account is blocked" });
       }
       const {userId} = req.body;
       if (!userId) {
-        return res.status(400).json({ message: "Missing user ID to unfollow" });
+        return res.status(401).json({ message: "Missing user ID to unfollow" });
       }
       const unfollowUser= await User.findById(userId);
       if(!unfollowUser){
-        return res.status(408).json({
+        return res.status(404).json({
           "message": "Unfollow user does not exists"
         });
       }
@@ -687,15 +664,15 @@ const loginUserController = async (req, res) => {
     }
   };
 
-  const blockUserController = async (req, res, next) => {
+  const BlockUserController = async (req, res, next) => {
     try {
-      const usertoken = req.cookies.usertoken;
-      if (!usertoken) {
-        return res.status(409).json({ message: "Please First Login" });
+      const userToken = req.params;
+      if (!userToken) {
+        return res.status(401).json({ message: "Please First Login" });
       }
-      const loggedInUser = await findLoggedInUser(usertoken);
+      const loggedInUser = await findLoggedInUser(userToken);
       if (!loggedInUser) {
-        return res.status(401).json({ message: "Unauthorized" });
+        return res.status(404).json({ message: "Unauthorized" });
       }
       if (loggedInUser.blocked) {
         return res.status(480).json({ message: "Your Account is blocked" });
@@ -704,7 +681,7 @@ const loginUserController = async (req, res) => {
       const { userId } = req.body;
   
       if (!userId) {
-        return res.status(400).json({ message: "Missing user ID to block" });
+        return res.status(401).json({ message: "Missing user ID to block" });
       }
   
       const userToBlock = await User.findOne({ _id: userId });
@@ -754,13 +731,13 @@ const loginUserController = async (req, res) => {
 
   //todo we could add the functionality to send the reset password to the users phone no
 
-  const findLoggedInUser= async(usertoken)=>{
-      if (!usertoken) {
+  const findLoggedInUser= async(userToken)=>{
+      if (!userToken) {
          return null;
       }
       // Validate token using JWT verify
       try {
-        const decoded = jwt.verify(usertoken, process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
+        const decoded = jwt.verify(userToken, process.env.USER_TOKEN); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
   
         // Fetch user data using findOne()
@@ -812,24 +789,18 @@ const loginUserController = async (req, res) => {
     return suggestions;
   }
   module.exports= {
-    registerUserController,
-     loginUserController,
-     logoutUserController,
-
-     avaibleUserUsernamesController,
-     updateUserPicture,
-     updateUserEmailController,
-
-     refetchUserController,
-     updateUserProfile,
-     updateUserUsernamesController,
-
-     resetUserPassword,
-     updateUserEmailGenerator,
-     updateUserPasswordController,
-     
-     followUserController,
-      unfollowUserController,
-    blockUserController
+   RegisterUserController,
+   LoginUserController,
+   RefetchUserController,
+   UpdateUserProfileController,
+   UpdateUserEmailController,
+   UpdateUserEmailGenerator,
+   FindUserByPrefixNameController,
+   AvaibleUserUsernamesController,
+   UpdateUserUsernamesController,
+   UpdateUserPasswordController,
+   FollowUserController,
+   UnfollowUserController,
+   BlockUserController
     };
     

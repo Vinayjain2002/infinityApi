@@ -1,0 +1,98 @@
+we are gonna to define the fields that are mandatory along with the o/p
+
+Register User: 
+    mobileNo,( email, username: unique)
+    401: if the all the required fields are not present
+    409: if user already exists
+    410: if unable to send password setting email
+    200: if the user registered Successfully and welcome mail also send
+    201: if the user registered Successfully and welcome mail not send
+
+Login User: 
+    required: password, email or username
+    401: if the password is not defined
+    404: no user find
+    401: if username or the email is not defined
+    403: if the user account is blocked
+    200: if the notification of the login also send
+    201: if the notification not send
+
+Refetch User:
+    required: userToken
+    404: if the user not found
+    403: if the user account is blocked
+    200: user Refetched Successfully
+
+UpdateUserProfileController:
+    required: userToken
+    401: if the token not found
+    404: if the user not found
+    403: if the user Account is blocked
+    200: profile Updated Successfully
+
+Update Email Req: 
+    required: email (new email), userToken
+    409: if the email already exists with a account
+    401: if the userToken is not defined
+    401: if the email is not defined new one
+    405: if the prev email and the new Email are same
+    400: if error while sending the email to the new Email
+    404: Error while Loging the user
+
+
+UpdateUserEmailController:
+    required: userToken, emailChangeToken
+    404: if the user is not defined
+    401: if the userToken or the emailChangeToken is not defined
+    200: if the user Email Updated Successfully
+    400: Error while decoding the user Token and finding details
+
+Aviable User Usernames:
+    required: username
+    410: username already taken but sending avaibel Usernames
+    200: if the username is Aviable
+
+UpdateUserUsernamesController:
+    401: if the userToken is not defined
+    401: if the new Username is not defined
+    403: if the userAccount is blocked
+
+Reset user password req:
+    required: username or email
+    401: if both the email or the useername is not defined
+    404: if some Error while Reseting the user password
+
+Find User By Prefix name:
+    200: if got the first 10 Usernames
+    500: if some Error while Getting the data
+
+Updating the user password:
+    401: if the password Resset Token is not defined
+    404: if the user not found
+    403: if the account is blocked
+    200: if the password Updated Successfully
+
+
+Follow User
+    401: if the userToken is not given
+    401: if the userId is not defined
+    402: if the userId is not defined whom to Follow
+    400: if the user is already followed
+    409: if the user is blocked by the user
+
+UnfollowUserController:
+    401: if the userToken is not defined
+    401: if the userId is not defined
+    403: if the user Account is blocked
+    404: if the user whom to unfollow is not defined
+    200: if Successfully Unfollowed
+
+Block User Controller:
+    401: if the userToken is not defined
+    404: if the logged In User Details are not found
+    401: if the userId is not found
+    400: if the user Already blocked
+
+// all the Controller are defined Successfully
+// only the update Picture Controller is left
+

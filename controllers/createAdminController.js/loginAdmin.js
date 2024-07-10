@@ -9,18 +9,18 @@ dotenv.config();
 const LoginAsAdminController = async (req, res, next) => {
     try {
       const {adminpassword, adminemail}= req.body;
-      if(!adminpassword && !adminemail){
-        return res.status(404).json({"message":"Invalid Credentials"})
+      if(!adminpassword || !adminemail){
+        return res.status(401).json({"message":"Invalid Credentials"})
       }
-      const adminUser = await Admin.findOne({ adminemail }); // Assuming email is used for login
-      if (!adminUser && !adminUser.deledAdminAccount) {
-        return res.status(401).json({ message: "Email not found" }); // More specific error
+      const adminUser = await Admin.findOne({ "adminemail":adminemail }); // Assuming email is used for login
+      if (!adminUser || adminUser.deletedAdminAccount) {
+        return res.status(404).json({ message: "Email not found" }); // More specific error
       }
       if(!adminpassword){
         return res.status(401).json({"message": "Password not found"})
       }
       if(!adminUser.approvedadmin){
-        return res.status(420).json({
+        return res.status(410).json({
           "message": "You are not a admin"
         })
       }
@@ -31,7 +31,6 @@ const LoginAsAdminController = async (req, res, next) => {
       }
       // we are going to define the code for the token
       const adminToken= jwt.sign({_id: adminUser._id},process.env.ADMIN_TOKEN, {expiresIn: "1d"});
-      res.cookie("adminToken", adminToken, {httpOnly: true});
       const date = new Date();
         const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
         const hours = date.getHours() % 12 || 12;
@@ -43,14 +42,15 @@ const LoginAsAdminController = async (req, res, next) => {
         const emailSend=await loginAdminNotfyEmail(adminUser.adminemail, adminUser.adminname,formattedDate, formattedTime, process.env.PASSWORD_RESET_URL);
       if(emailSend){
         console.log("email also send");
+        return  res.status(200).json({"message": "Admin Login Successfully", "adminToken": adminToken})
       }
       else{
-        console.log("email not send");
+        return  res.status(201).json({"message": "Admin Login Successfully", "adminToken": adminToken})
+
       }
-        res.status(200).json({ message: "Welcome Back Admin"}); // Send token for further access
     } catch (err) {
       console.error(err); // Log specific error for debugging
-      res.status(err.statusCode || 500).json({ message: err.message || "Internal Server Error" });
+      res.status(500).json({ "message": "Internal Server Error" });
     }
   };
 

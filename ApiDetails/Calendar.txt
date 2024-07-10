@@ -1,0 +1,42 @@
+Post Event Controller
+
+Post Event Controller:
+    params: userToken
+    required: name, startDate, endDate (mandatory),category, summary
+
+    404: if the usr not found
+    405: if the user account is blocked
+    401: if all the fields are not defined
+
+Get all events:
+    params: pageNo, userToken
+    401: if the userToken is not found
+    404: if the user not found
+    405: if the account is blocked
+    404: if no events is found
+    200: if all the events are found
+
+GetEventsByDateController:
+    params: userToken
+    required: date
+    401: if the userToken is not defined
+    404: if the user not found
+    405: if the account is blocked
+    404: if the events are not found
+    200: if the all the events are fetched
+
+DeleteEventController:
+    params: eventId, userToken
+    401: if the userToken, eventId is not defined
+    404: if the user not found
+    405: if the account is blocked
+    404:  if no event is found 
+
+Get all the events in a month
+    params: pageNo, userToken
+    requried: startDate, endingDate
+    401: if the userToken is not defined
+    401: if the startDate, endDate is not defined
+    404: if the user not found
+    405: if the user account is blocked
+    404: if the not event is found

@@ -7,7 +7,7 @@ const User= require("../../models/User")
 const PostVideoController= async(req,res,next)=>{
     try{
         // we are gonna the controller for teh  post the video Controlle
-        const adminToken = req.cookies.adminToken;
+        const adminToken = req.params;
         if (!adminToken) {
           return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
         }
@@ -20,8 +20,8 @@ const PostVideoController= async(req,res,next)=>{
           if (!admin) {
             return res.status(404).json({ message: "admin not found" }); // Use 404 for not found
           }
-          else if(admin.deletedAdminAccount && !admin.approvedadmin){
-            return res.status(405).json({
+          else if(admin.deletedAdminAccount || !admin.approvedadmin || admin.deletedAdminAccount){
+            return res.status(410).json({
               "message": "Your Are not allowed"
             })
           }
@@ -47,11 +47,11 @@ const PostVideoController= async(req,res,next)=>{
         const welcomeuser= await VideoUploaderWelcome(admin.adminname,admin.adminemail);
         if(welcomeuser){
           console.log("welcome mail send to the user");
+          return res.status(200).json({"message": "Video Uploaded Successfully"})
         }
         else{
-          console.log("welcome mail not send");
+          return res.status(201).json({"message": "Video Uploaded Successfully"})
         }
-        return res.status(200).json({"message": "Video Uloaded Successfully",details: video});
     }
     catch(err){
         return res.status(500).json({"message": "Internal Server Error"})
@@ -61,7 +61,7 @@ const PostVideoController= async(req,res,next)=>{
 const RemoveVideoController= async(req,res,next)=>{
     try{
         // we are going to delete the Video of the User
-        const adminToken = req.cookies.adminToken;
+        const adminToken = req.params;
         const {videoId}= req.body;
         if(!videoId){
             return res.status(401).json({"message": "Video Url is not Present"})
@@ -78,13 +78,13 @@ const RemoveVideoController= async(req,res,next)=>{
           if (!admin) {
             return res.status(404).json({ message: "admin not found" }); // Use 404 for not found
           }
-          else if(admin.deletedAdminAccount && !admin.approvedadmin){
-            return res.status(405).json({
+          else if(admin.deletedAdminAccount || !admin.approvedadmin || admin.deletedAdminAccount){
+            return res.status(410).json({
               "message": "Your Are not allowed"
             })
           }
           else if(!admin.videoAccess){
-                return res.status(401).json({"message": "You are not allowed to access the Videos"})
+                return res.status(410).json({"message": "You are not allowed to access the Videos"})
           }
           
           //we need to define the logic of getting the url of the video and saving the url of the video in the admin Sections
@@ -124,9 +124,9 @@ const RemoveVideoController= async(req,res,next)=>{
     }
 }
 
-const blockVideoController= async(req,res,next)=>{
+const BlockVideoController= async(req,res,next)=>{
     try{
-        const adminToken = req.cookies.adminToken;
+        const adminToken = req.params;
         const {videoId}= req.body;
         if(!videoId){
             return res.status(401).json({"message": "Video Url is not Present"})
@@ -143,13 +143,13 @@ const blockVideoController= async(req,res,next)=>{
           if (!admin) {
             return res.status(404).json({ message: "admin not found" }); // Use 404 for not found
           }
-          else if(admin.deletedAdminAccount && !admin.approvedadmin){
-            return res.status(405).json({
+          else if(admin.deletedAdminAccount || !admin.approvedadmin || !admin.deletedAdminAccount){
+            return res.status(410).json({
               "message": "Your Are not allowed"
             })
           }
           else if(!admin.videoAccess){
-                return res.status(401).json({"message": "You are not allowed to access the Videos"})
+                return res.status(410).json({"message": "You are not allowed to access the Videos"})
           }
     
           const video= await Video.findById(videoId);
@@ -157,7 +157,7 @@ const blockVideoController= async(req,res,next)=>{
             return res.status(404).json({"message": "Video is not found"});
           }
           if(video.videoBlocked){
-            return res.status(200).json({"message":"Video is Already Blocked"});
+            return res.status(202).json({"message":"Video is Already Blocked"});
           }
 
           video.videoBlocked= true;
@@ -188,4 +188,4 @@ const blockVideoController= async(req,res,next)=>{
     }
 }
 
-module.exports= {PostVideoController, RemoveVideoController, blockVideoController};
+module.exports= {PostVideoController, RemoveVideoController, BlockVideoController};

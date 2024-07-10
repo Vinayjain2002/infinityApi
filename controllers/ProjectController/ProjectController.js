@@ -14,16 +14,16 @@ const UploadProjectController= async(req,res)=>{
         const missingFields= requiredFields.filter((field)=>field== req.body[field]);
 
         if(missingFields.length){
-            return res.status(400).json({ message: `Missing required fields: ${missingFields.join(', ')}` })
+            return res.status(401).json({ message: `Missing required fields: ${missingFields.join(', ')}` })
         }
 
         // weare going to store the data of the Projects
-        const usertoken= req.cookies.usertoken;
-        if(!usertoken){
+        const userToken= req.params;
+        if(!userToken){
             return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
         }
         try{
-            const decoded= jwt.verify(usertoken,process.env.USER_TOKEN );
+            const decoded= jwt.verify(userToken,process.env.USER_TOKEN );
             const userId= decoded._id;
             // now we are going to find out the details of teh user here extra like is he a valid user or not
             const user=await User.findById(userId);
@@ -57,7 +57,7 @@ const UploadProjectController= async(req,res)=>{
                     return res.status(200).json({"message": "Project Uploaded Successfully and Welcome Mail send"});        
               }
                 else{
-                    return res.status(200).json({"message": "Project Uploaded Successfully and Welcome Mail not send"});        
+                    return res.status(201).json({"message": "Project Uploaded Successfully and Welcome Mail not send"});        
                 }
             }
           }  
@@ -76,10 +76,10 @@ const UploadProjectController= async(req,res)=>{
 
 
 
-const getUserPrefProjectsController= async(req,res,next)=>{
+const GetUserPrefProjectsController= async(req,res,next)=>{
     try{
         const {projectName,projectLevel,techStack, projectAcheivements,tags}= req.body;
-        const pageNo= req.params;
+        const pageNo= req.params?.pageNo ?? 1;
         let filters= [];
         // so if the length is not defined it will fetch the first 10
         if(projectName){
@@ -103,7 +103,7 @@ const getUserPrefProjectsController= async(req,res,next)=>{
         const skipLength= (pageNo-1)*10;
         const findProjects= await Project.find({$and: filters}).skip(skipLength).limit(10);
         if(!findProjects || findProjects.length===0){
-            return res.status(204).json({"message": "no Projects Find"})
+            return res.status(404).json({"message": "no Projects Find"})
         }
         return res.status(200).json({
             message: "Projects Ftched Succesfully",
@@ -118,21 +118,21 @@ const getUserPrefProjectsController= async(req,res,next)=>{
 }
 
 
-const getSpecificProjectController=async(req,res,next)=>{
+const GetSpecificProjectController=async(req,res,next)=>{
     try{
         // we are going to find out the Specific Projects for the user
         const {projectId}= req.params;
 
         if(!projectId){
-            return res.status(400).json({
+            return res.status(401).json({
                 "message": "Missing Project Id"
             });
         }
-        const projectDetails= await Project.findById(id);
+        const projectDetails= await Project.findById(projectId);
         if(!projectDetails){
             return res.status(404).json({"message": "No Project Find"});
         }
-        return res.status(200).json({"message": "Projects Fetched Successfuly", data: projectDetails})
+        return res.status(200).json({"message": "Projects Fetched Successfuly", "data": projectDetails})
     }
     catch(err){
         return res.status(500).json({"message": "Internal Server Error"});
@@ -140,21 +140,20 @@ const getSpecificProjectController=async(req,res,next)=>{
 }
 
 // we are going to define the routes like the change the Project
-const changeProjectController = async (req, res, next) => {
+const ChangeProjectController = async (req, res, next) => {
     try {
-        const {projectId}= req.parmas;
-        if(!projectId){
-            return res.status(400).json({'messsage': "Project iD is not defined"});
-        }
+        const {projectId, userToken}= req.params;
         const {updatedData } = req.body;
+        if(!projectId || !updatedData){
+            return res.status(401).json({'messsage': "All the credentials are not found"});
+        }
         // we are going to change the Project Details
-        const usertoken = req.cookies.usertoken;
-        if (!usertoken) {
+        if (!userToken) {
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try {
             // we are going to find out the details of the user
-            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+            const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -172,7 +171,7 @@ const changeProjectController = async (req, res, next) => {
             }
             let updatedProject = await Project.findByIdAndUpdate(projectId, updatedData, { new: true });
             if (!updatedProject) {
-                return res.status(500).json({ message: "Failed to update Project" });
+                return res.status(400).json({ message: "Failed to update Project" });
             }
             return res.status(200).json({ message: "Project updated successfully", updatedProject: updatedProject });
         } catch (err) {
@@ -185,20 +184,19 @@ const changeProjectController = async (req, res, next) => {
 
 
 // we are going to define the routes to delete the Project
-const deleteProjectController= async(req,res,next)=>{
+const DeleteProjectController= async(req,res,next)=>{
     try{
         // going to delete the Project Details
-        const {projectId}= req.params;
+        const {projectId,userToken}= req.params;
 
         if(!projectId){
             return res.status(401).json({"message": "Project Id is missing"})
         }
         // we are going to change the Project Details
-        const usertoken= req.cookies.usertoken;
-        if(!usertoken){
+        if(!userToken){
             return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access 
         }
-        const decoded= jwt.verify(usertoken, process.env.USER_TOKEN);
+        const decoded= jwt.verify(userToken, process.env.USER_TOKEN);
         const userId= decoded._id;
                 // now we are going to find out the details of teh user here extra like is he a valid user or not
         const user=await User.findById(userId);
@@ -223,13 +221,13 @@ const deleteProjectController= async(req,res,next)=>{
       const deletedProject = await Project.findByIdAndDelete(projectId); // Assuming `YourModel` represents the project collection
 
       if (!deletedProject) {
-        return res.status(500).json({ message: "Failed to delete project" });
+        return res.status(400).json({ message: "Failed to delete project" });
       }
 
       // 7. Update User's Projects (Efficient Update with Pull Operator)
       const updatedUser = await User.findByIdAndUpdate(userId, { $pull: { projects: projectId } }, { new: true }); // Efficient update with `pull`
       if (!updatedUser) {
-        return res.status(500).json({ message: "Failed to remove project from your projects" });
+        return res.status(411).json({ message: "Failed to remove project from your projects" });
       }
       return res.status(200).json({ message: "Project deleted successfully" });
     }
@@ -238,17 +236,17 @@ const deleteProjectController= async(req,res,next)=>{
     }
 }
 
-const savedProjectsController = async (req, res, next) => {
+const SavedProjectsController = async (req, res, next) => {
     try {
 
         // here we are going to get the data that is saved by the user
-        const usertoken = req.cookies.usertoken;
-        if (!usertoken) {
+        const userToken = req.params;
+        if (!userToken) {
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try {
             // we are going to find out the details of the user
-            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+            const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -285,12 +283,12 @@ const saveProjectController= async(req,res,next)=>{
         if(!projectId){
             return res.status(404).json({"message": "Project id is missing"})
         }
-        const usertoken= req.cookies.usertoken;
-        if(!usertoken){
+        const userToken= req.params;
+        if(!userToken){
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try{
-            const decoded = jwt.verify(usertoken,process.env.USER_TOKEN);
+            const decoded = jwt.verify(userToken,process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -312,16 +310,16 @@ const saveProjectController= async(req,res,next)=>{
     }
 }
 
-const getProjectsController = async(req,res,next)=>{
+const GetProjectsController = async(req,res,next)=>{
     try{
-        const usertoken= req.cookies.usertoken;
+        const userToken= req.params;
         const pageNo= req.params?.pageNo ?? 1;
         const skipLength= (pageNo-1)*10;
-        if(!usertoken){
+        if(!userToken){
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
         try{
-            const decoded = jwt.verify(usertoken, process.env.USER_TOKEN);
+            const decoded = jwt.verify(userToken, process.env.USER_TOKEN);
             const userId = decoded._id;
             const user = await User.findById(userId);
             if (!user) {
@@ -332,7 +330,7 @@ const getProjectsController = async(req,res,next)=>{
             const skipLength= (pageNo-1)*10;
             // here we are going to fetch the new no of the newLength of the data 
             const projects=await Project.find({}).skip(skipLength).limit(10);
-            if(!projects && projects.length==0){
+            if(!projects || projects.length==0){
                 return res.status(401).json({"message": "No Project Found"});
             }
             return res.status(200).json({"message": "Projects Fetched Successfully", data: projects}); 
@@ -347,10 +345,10 @@ const getProjectsController = async(req,res,next)=>{
 }  
 
  
-const getProjectsByDateController = async () => {
+const GetProjectsByDateController = async () => {
     try {
 
-        const pageNo= req.params?.pageNo;
+        const pageNo= req.params?.pageNo ?? 1;
         const skipLength= (pageNo-1)*10;
       let pipeline = []; // Initialize empty pipeline
       let sortCriteria = {}; // Initialize empty sort criteria
@@ -365,7 +363,7 @@ const getProjectsByDateController = async () => {
       const projects = await Project.aggregate(pipeline);
   
       if (!projects || projects.length === 0) {
-        return res.status(204).json({ message: "No Projects found based on your criteria" });
+        return res.status(404).json({ message: "No Projects found based on your criteria" });
       }
   
       return res.status(200).json({ message: "Projects fetched successfully", data: projects });
@@ -377,13 +375,12 @@ const getProjectsByDateController = async () => {
 
 module.exports= {
     UploadProjectController,
-    getUserPrefProjectsController
-    ,deleteProjectController,
-    
-    changeProjectController, 
-    getSpecificProjectController, 
-    savedProjectsController,
+    GetUserPrefProjectsController,
+    DeleteProjectController,
+    ChangeProjectController,    
+    GetSpecificProjectController, 
+    SavedProjectsController,
     saveProjectController,
-    getProjectsController,
-    getProjectsByDateController
+    GetProjectsController,
+    GetProjectsByDateController
 };

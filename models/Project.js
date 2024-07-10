@@ -66,7 +66,11 @@ const ProjectSchema= mongoose.Schema({
     ],
     prerequisite: [{
         type: String
-    }]
+    }],
+    adminUploaded: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin"
+    }
 });
 
 const Project=mongoose.model("Project", ProjectSchema);
