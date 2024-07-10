@@ -8,7 +8,7 @@ module.exports= router.get("/userCount/:pageNo", noOfUsersController);
 module.exports= router.get("/user/registered/month/:pageNo", RegisteredUserInMonthController);
 module.exports= router.get("/user/registered/month/range", registeredUserInMonthRangeController);
 module.exports= router.get("/user/registered/year", RegisteredUserInYearController);
-module.exports= router.get("/user/registered/today/:pageNo",registeredTodayUsersCountController);
+// module.exports= router.get("/user/registered/today/:pageNo",registeredTodayUsersCountController);
 
 // we are gonna to dedfine the routes fot teh Fests
 module.exports= router.get("/fest/total/:pageNo", noOfFestsControllers);

@@ -4,7 +4,7 @@ const jwt= require("jsonwebtoken")
 const Blogger= require('../../models/Blogger');
 const Blog = require("../../models/Blogs");
 
-const getTopicBlogsController= async (req,res)=>{
+const GetTopicBlogsController= async (req,res)=>{
     try{
         // const we are gonna to get the topic wise all teh blogs
         const {blogTopic}= req.body;
@@ -251,4 +251,4 @@ const DeleteBlogsController= async(req, res,next)=>{
         return res.status(500).json({"message": "Internal Server Error"});
     }
 }
-module.exports= {getTopicBlogsController, BloggerBlogsController, RelatedBlogsController, CreateBlogsController,EditBlogsController, GetBlogsController, DeleteBlogsController}
+module.exports= {GetTopicBlogsController, BloggerBlogsController, RelatedBlogsController, CreateBlogsController,EditBlogsController, GetBlogsController, DeleteBlogsController}

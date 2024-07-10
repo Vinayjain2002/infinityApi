@@ -6,7 +6,6 @@ const User= require("../../models/User");
 const Blogger= require("../../models/Blogger");
 const Blogs= require("../../models/Blogs");
 const Bootcamps= require("../../models/BootCamp");
-const Blogger = require("../../models/Blogger")
 const Fests= require("../../models/Fest");
 const Hackathon=require("../../models/postHackathon");
 const Video= require('../../models/Videos');

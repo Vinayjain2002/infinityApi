@@ -433,5 +433,5 @@ module.exports= {
    SavedHackathonsController,
    SaveHackathonController,
    GetUserPrefHackathonsController,
-   GetRandomHackathonsContoller,
+   GetRandomHackathonsContoller
   };

@@ -801,6 +801,7 @@ const LoginUserController = async (req, res) => {
    UpdateUserPasswordController,
    FollowUserController,
    UnfollowUserController,
-   BlockUserController
+   BlockUserController,
+   ResetUserPassword
     };
     
