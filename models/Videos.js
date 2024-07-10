@@ -1,6 +1,6 @@
-const mongoose= require("monoose")
+const mongoose= require("mongoose")
 
-const VideosSchema= mongoose.Schame({
+const VideosSchema= mongoose.Schema({
     url: {
         type: String,
         required: true

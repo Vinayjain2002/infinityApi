@@ -7,7 +7,7 @@ const Blogger= require("../../models/Blogger");
 const Blogs= require("../../models/Blogs");
 const Bootcamps= require("../../models/BootCamp");
 const Fests= require("../../models/Fest");
-const Hackathon=require("../../models/postHackathon");
+const Hackathon=require("../../models/Hackathon");
 const Video= require('../../models/Videos');
 
 const noOfUsersController= async (req,res,next)=>{
