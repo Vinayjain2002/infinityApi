@@ -87,7 +87,7 @@ const GetAllEventsController= async ()=>{
     }
 }
 
-const GetEventsByDateController=async ()=>{
+const GetEventsByDateController=async (req,res,next)=>{
     try{
         const userToken = req.params;
         const {date}= req.body;

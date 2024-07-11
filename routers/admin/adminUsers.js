@@ -1,7 +1,8 @@
-const express= require("express")
-const { blockUserAccountController, createUserAccountController, deleteUserAccountController, accessUserAccountController } = require("../../controllers/adminController/usersControllers")
+const express= require("express");
+const router= express.Router();
+const { BlockUserAccountController, AccessUserAccountController, CreateUserAccountController } = require("../../controllers/adminController/usersControllers")
 
-module.exports= router.put("/admin/blockUser",blockUserAccountController)
-module.exports= router.post("/admin/createUser", createUserAccountController);
+module.exports= router.put("/blockUser/:adminToken",BlockUserAccountController)
+module.exports= router.post("/admin/createUser/:adminToken", CreateUserAccountController);
 // module.exports= router.delete("/admin/deletUser", deleteUserAccountController)
-module.exports=router.get("/admin/accessUser", accessUserAccountController)
+module.exports=router.get("/admin/accessUser/:adminToken", AccessUserAccountController)

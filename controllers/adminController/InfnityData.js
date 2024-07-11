@@ -10,7 +10,7 @@ const Fests= require("../../models/Fest");
 const Hackathon=require("../../models/Hackathon");
 const Video= require('../../models/Videos');
 
-const noOfUsersController= async (req,res,next)=>{
+const NoOfUsersController= async (req,res,next)=>{
     try {
       const pageNo= req.params?.pageNo ?? 1;
         // Check for token presence
@@ -28,8 +28,7 @@ const noOfUsersController= async (req,res,next)=>{
             if(!noOfUsers){
                 return res.status(404).json({"message": "UNable to find out the no of the Users"});
             }
-            else{module.exports= router.get()
-
+            else{
                 return res.status(200).json({"message": "Users Data Fetched Succesfully","users": noOfUsers, "details": userDetails});
             }
         }
@@ -38,7 +37,6 @@ const noOfUsersController= async (req,res,next)=>{
             return res.status(status).json({"message": message});
         }
       } catch (err) {
-        console.error("Unhandled error in refetchUserController:", err);
         return res.status(500).json({ message: "Internal Server Error" }); // Generic error for unexpected issues at top level
       }
 }
@@ -67,7 +65,7 @@ const RegisteredUserInMonthController = async (req, res, next) => {
             const userDetails= await User.find({
               createdAt: {$gte: startDate, $lt: endDate}
             }).skip(skipLength).limit(10);// Use .countDocuments() for efficiency
-            if(!usersInMonth && !userDetails){
+            if(!usersInMonth || !userDetails){
               if (err) {
                 console.error("Error fetching users:", err);
                 return res.status(500).json({ message: "Error retrieving user count" });
@@ -92,14 +90,14 @@ const RegisteredUserInMonthController = async (req, res, next) => {
   };
 
 
-  const registeredUserInMonthRangeController = async (req, res, next) => {
+  const RegisteredUserInMonthRangeController = async (req, res, next) => {
     try {
       const adminDetails = await AuthenticateAdmin(req);
       const { message, status } = adminDetails;
   
       if (status === 200) {
         const { startMonth, endMonth, startYear, endYear } = req.body;
-        if(!startMonth && !endMonth && !startYear && !endYear){
+        if(!startMonth || !endMonth || !startYear || !endYear){
           return res.status(400).json({"message": "Please provide the all the dates"});
         }
         // Initialize variables
@@ -180,7 +178,7 @@ const RegisteredUserInYearController = async (req, res, next) => {
     }
   };
   
-  const registeredTodayUsersCountController = async (req, res, next) => {
+  const RegisteredTodayUsersCountController = async (req, res, next) => {
     try {
       const pageNo= req.params?.pageNo ?? 1;
       const skipLength= (pageNo-1)*10;
@@ -229,12 +227,12 @@ const RegisteredUserInYearController = async (req, res, next) => {
   
 
 
-const noOfFestsControllers= async(req,res,next)=>{
+const NoOfFestsControllers= async(req,res,next)=>{
     try{
       const pageNo= req.params?.pageNo ?? 1;
         // here we are going to find out the no of the fests total
         const adminDetails = await AuthenticateAdmin(req);
-        const { message, status } = req.body;
+        const { message, status } = adminDetails;
         const skipLength= (pageNo-1)*10;
         if (status === 200) {
           const noOfFests= Fests.find({}).countDocuments();
@@ -261,13 +259,13 @@ const noOfFestsControllers= async(req,res,next)=>{
     }
 }
 
-const todayPostedFestsController = async (req, res, next) => {
+const TodayPostedFestsController = async (req, res, next) => {
   try {
     const pageNo= req.params?.pageNo?? 1;
     const skipLength= (pageNo-1)*10;
 
     const adminDetails = await AuthenticateAdmin(req);
-    const { message, status } = req.body;
+    const { message, status } = adminDetails;
 
     if (status === 200) {
       const today = new Date();
@@ -318,7 +316,7 @@ const todayPostedFestsController = async (req, res, next) => {
   }
 };
 
-const todayLastDateToApplyFestController = async (req, res, next) => {
+const TodayLastDateToApplyFestController = async (req, res, next) => {
   try {
     const pageNo= req.params?.pageNo ?? 1;
     const skipLength= (pageNo-1)*10;
@@ -427,7 +425,7 @@ const FestUploadedInAMonthController = async(req,res,next)=>{
       const pageNo= req.params?.pageNo ??1;
       const skipLength= (pageNo-1)*10;
       const {month,year}= req.body;
-      if(!month && !year){
+      if(!month || !year){
         const year = today.getFullYear();
         const month = today.getMonth();
       }
@@ -472,12 +470,12 @@ const TotalFestsInAParticularRangeController = async (req, res, next) => {
     const pageNo = req.params?.pageNo ?? 1;
     const skipLength= (pageNo-1)*10;
     const adminDetails = await AuthenticateAdmin(req);
-    const { message, status } = req.body;
+    const { message, status } = adminDetails;
 
     if (status === 200) {
       const { adminId } = adminDetails;
       const { startMonth, startYear, endMonth, endYear } = req.params;
-      if(!startMonth && !startYear && endMonth && !endYear){
+      if(!startMonth || !startYear || endMonth || !endYear){
         return res.status(401).json({"message": "Dates are not defined"});
       }
       // Calculate total number of months in the range (handles overflow)
@@ -520,7 +518,7 @@ const TotalFestsInAParticularRangeController = async (req, res, next) => {
 };
 
 
-const noOfHackathonsController=async(req,res,next)=>{
+const NoOfHackathonsController=async(req,res,next)=>{
   try{
     const pageNo= req.params?.pageNo ?? 1;
     const skipLength= (pageNo-1)*10;
@@ -552,7 +550,7 @@ const noOfHackathonsController=async(req,res,next)=>{
   }
 }
 
-const todayLastDateToApplyHackathonController = async (req, res, next) => {
+const TodayLastDateToApplyHackathonController = async (req, res, next) => {
   try {
     const pageNo= req.params?.pageNo ?? 1;
     const skipLength= (pageNo-1)*10;
@@ -653,7 +651,7 @@ const LastweekToApplyHackathonController = async (req, res, next) => {
   }
 };
 
-const todayPostedHackathonController = async (req, res, next) => {
+const TodayPostedHackathonController = async (req, res, next) => {
   try {
     const pageNo= req.params?.pageNo ?? 1;
     const adminDetails = await AuthenticateAdmin(req);
@@ -762,7 +760,7 @@ const HackathonPostedInARangeController= async(req,res,next)=>{
       return res.status(500).json({"messsage": "Internal Server Error"});
     }
 }
-const noOfBloggersController=async (req,res,next)=>{
+const NoOfBloggersController=async (req,res,next)=>{
   try{
     const pageNo = req.params?.pageNo ?? 1;
     const skipLength= (pageNo-1)*10;
@@ -780,7 +778,7 @@ const noOfBloggersController=async (req,res,next)=>{
             return res.status(404).json({"message": "UNable to find out the no of the Users"});
         }
         else{
-            return res.status(200).json({"message": "Users Data Fetched Succesfully","users": noOfBloggers});
+            return res.status(200).json({"message": "Users Data Fetched Succesfully","users": noOfBloggers, "details": bloggerDetails});
         }
     }
     else if(status != 200){
@@ -795,7 +793,7 @@ const noOfBloggersController=async (req,res,next)=>{
 
 // we need to define the seperate routes for the Blogs like the uSER
 
-const registeredBloggerInMonthController = async (req, res, next) => {
+const RegisteredBloggerInMonthController = async (req, res, next) => {
   // here we are gonna to find the details of the user who regsitered in a particular month
 
     try{
@@ -845,14 +843,14 @@ const registeredBloggerInMonthController = async (req, res, next) => {
   };
 
 
-  const registeredBloggerInMonthRangeController = async (req, res, next) => {
+  const RegisteredBloggerInMonthRangeController = async (req, res, next) => {
     try {
       const adminDetails = await AuthenticateAdmin(req);
       const { message, status } = adminDetails;
   
       if (status === 200) {
         const { startMonth, endMonth, startYear, endYear } = req.params;
-        if(!startMonth && !endMonth && !startYear && !endYear){
+        if(!startMonth || !endMonth || !startYear || !endYear){
           return res.status(400).json({"message": "Please provide the all the dates"});
         }
         // Initialize variables
@@ -933,7 +931,7 @@ const RegisteredBloggerInYearController = async (req, res, next) => {
     }
   };
   
-  const registeredTodayBLoggersCountController = async (req, res, next) => {
+  const RegisteredTodayBLoggersCountController = async (req, res, next) => {
     try {
       const pageNo= req.params?.pageNo ?? 1;
       const skipLength= (pageNo-1)*10;
@@ -982,7 +980,7 @@ const RegisteredBloggerInYearController = async (req, res, next) => {
   
 
 
-const noOfBlogsController= async (req,res,next)=>{
+const NoOfBlogsController= async (req,res,next)=>{
     try{
       const pageNo = req.params?.pageNo ?? 1;
       const skipLength= (pageNo-1)*10;
@@ -1009,7 +1007,7 @@ const noOfBlogsController= async (req,res,next)=>{
 }
 
 
-const noOfTodayPostedBlogs= async(req,res,next)=>{
+const NoOfTodayPostedBlogs= async(req,res,next)=>{
   try{
     const pageNo= req.params?.pageNo ?? 1;
     const adminDetails = await AuthenticateAdmin(req);
@@ -1062,7 +1060,7 @@ const noOfTodayPostedBlogs= async(req,res,next)=>{
   }
 }
 
-const noOfVideoController=async ()=>{
+const NoOfVideoController=async ()=>{
     try{
       const pageNo= req.params?.pageNo ?? 1;
       // Check for token presence
@@ -1095,7 +1093,7 @@ const noOfVideoController=async ()=>{
     }
 }
 
-const todayPostedVideoController= async()=>{
+const TodayPostedVideoController= async()=>{
     try{
       const pageNo= req.params?.pageNo ?? 1;
       const skipLength= (pageNo-1)*10;
@@ -1146,7 +1144,7 @@ const todayPostedVideoController= async()=>{
     }
 }
 
-const videoPostedInAmonthController= async(req,res,next)=>{
+const VideoPostedInAmonthController= async(req,res,next)=>{
   try{
     const adminDetails = await AuthenticateAdmin(req);
     const { message, status } = adminDetails;
@@ -1276,45 +1274,45 @@ const AuthenticateAdmin= async(req)=>{
 module.exports={
 
   //user contrllers
-  noOfUsersController,
-  registeredUserInMonthRangeController,
+  NoOfUsersController,
+  RegisteredUserInMonthRangeController,
   RegisteredUserInMonthController,
   RegisteredUserInYearController,
-  registeredTodayUsersCountController,
+  RegisteredTodayUsersCountController,
 
 // blogs controller  
-  noOfTodayPostedBlogs,
-  noOfBlogsController,
+  NoOfTodayPostedBlogs,
+  NoOfBlogsController,
 
 
   //bloggers controller
-  registeredTodayBLoggersCountController,
+  RegisteredTodayBLoggersCountController,
   RegisteredBloggerInYearController,
-  noOfBloggersController,
-  registeredBloggerInMonthRangeController,
-  registeredBloggerInMonthController,
+  NoOfBloggersController,
+  RegisteredBloggerInMonthRangeController,
+  RegisteredBloggerInMonthController,
 
 
 // fests controller
-  noOfFestsControllers,
-  todayPostedFestsController,
-  todayLastDateToApplyFestController,
+  NoOfFestsControllers,
+  TodayPostedFestsController,
+  TodayLastDateToApplyFestController,
   LastWeekToApplyFestsController,  
   FestUploadedInAMonthController,
   TotalFestsInAParticularRangeController,
 
 // hackathons controller
   HackathonsPostedInMonthController,
-  noOfHackathonsController,
-  todayLastDateToApplyHackathonController,
+  NoOfHackathonsController,
+  TodayLastDateToApplyHackathonController,
   LastweekToApplyHackathonController,
   HackathonPostedInARangeController,
-  todayPostedHackathonController,
+  TodayPostedHackathonController,
 
   //video controllers
-  videoPostedInAmonthController,
+  VideoPostedInAmonthController,
   videoPostedLastYearController,
-  noOfVideoController,
-  todayPostedVideoController,
+  NoOfVideoController,
+  TodayPostedVideoController,
 
 }

@@ -6,3 +6,5 @@ module.exports= router.delete("/admin/deleteBlog",deleteBlogsController )
 module.exports= router.put("/admin/updateBlog", updateBlogsConroller)
 module.exports= router.put("/admin/blocBlock", blockBlogController)
 module.exports= router.post("/admin/createBlock", createBlogsController)
+
+// this need to be completed from the Old Laptop

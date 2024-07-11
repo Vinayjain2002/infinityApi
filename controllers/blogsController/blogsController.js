@@ -29,7 +29,7 @@ const GetTopicBlogsController= async (req,res)=>{
 const BloggerBlogsController= async(req,res,next)=>{
     try{
         //we are gonna to get all the blog of a Particular Blogger
-        const pageNo= req.params?.pageNo ?? 1;
+        const {pageNo} = req.params?.pageNo ?? 1;
         const skipLength= (pageNo-1)*10;
         const {bloggerId}= req.params;
         if(!bloggerId){
@@ -209,7 +209,7 @@ const GetBlogsController= async(req,res,next)=>{
 
 const DeleteBlogsController= async(req, res,next)=>{
     // here we are going to delete the blogs of the user
-    const {bloggertoken, blogId} = req.params;
+    const {bloggerToken, blogId} = req.params;
     if (!bloggerToken) {
       return res.status(401).json({ message: "Unauthorized: Token not found" }); // Use 401 for unauthorized access
     }

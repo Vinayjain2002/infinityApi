@@ -122,7 +122,6 @@ const GetHackathonsByDateController = async () => {
       const skipLength= (pageNo-1)*10;
       let pipeline = []; // Initialize empty pipeline
       let sortCriteria = {}; // Initialize empty sort criteria
-  
       // Validate and build pipeline based on request parameters
       if (dateOfPosting) {
         sortCriteria = { dateOfPosting: -1 }; // Sort by dateOfPosting descending

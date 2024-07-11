@@ -22,13 +22,13 @@ const CreateAdminController = async (req, res, next) => {
         return res.status(404).json({ message: "Admin not found" }); // Use 404 for not found
       }
       else if(!admin.approvedadmin){
-        return res.status(410).json({"message": "You are not  approved as admin"})
+        return res.status(404).json({"message": "You are not  approved as admin"})
       }
       else if(admin.deletedAdminAccount){
         return res.status(404).json({"message": "Admin Account is deleted"})
       }
       else if(!admin.createOtherAdmin){
-        return res.status(410).json({
+        return res.status(404).json({
           "message": "You are not allowed to create other admins"
         })
       }

@@ -13,10 +13,10 @@ const ApplyForAdminController = async (req, res, next) => {
   
       const existingAdmin = await Admin.findOne({ adminemail: adminemail });
       if( existingAdmin && existingAdmin.approvedadmin){
-          return res.status(410).json({message: "You are already a Admin"})
+          return res.status(403).json({message: "You are already a Admin"})
       } // Assuming Admin model exists
       else if (existingAdmin) {
-        return res.status(409).json({ message: "You are already applied for an admin" }); // Use 409 for conflict
+        return res.status(404).json({ message: "You are already applied for an admin" }); // Use 409 for conflict
       }
       if(adminname==undefined || adminemail==undefined || adminmobileno==undefined){
         return res.status(401).json({"error": "Please provide name , email, mobileno"})

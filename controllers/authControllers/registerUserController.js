@@ -10,7 +10,6 @@ dotenv.config();
 
 // ONly the cahange of the userprofile Picture is left
 
-
 const RegisterUserController = async (req, res) => {
   // we need to first check the email or the phone no first
     try {
@@ -432,7 +431,7 @@ const LoginUserController = async (req, res) => {
           "message": "Please provide the new username"
         })
       }
-      const loggedInUser= await findLoggedInUser(usertoken);
+      const loggedInUser= await findLoggedInUser(userToken);
       if(loggedInUser.blocked){
         return res.status(403).json({"message": "Your account is blocked"})
       }
@@ -442,7 +441,7 @@ const LoginUserController = async (req, res) => {
         if(existingUser){
           // we are going to get the suggestions of the avaible Usernames that are avaible
           const suggestions = await suggestSimilarUsernames(username);
-          return res.status(493).json({"message": "Username Already Exists"});
+          return res.status(401).json({"message": "Username Already Exists", "Suggestions": suggestions});
         }
         loggedInUser.username= username;
        await loggedInUser.save();
@@ -468,9 +467,9 @@ const LoginUserController = async (req, res) => {
         // 2. Find User Based on Email or Username
         let user;
         if (email) {
-          user = await User.findOne({ email });
+          user = await User.findOne({ email:email });
         } else {
-          user = await User.findOne({ username });
+          user = await User.findOne({ username: username });
         }
         if (!user) {
           return res.status(404).json({ message: "No user found." });
@@ -505,7 +504,8 @@ const LoginUserController = async (req, res) => {
         return res.json({ message: 'No User found' });
       }
       return res.status(200).json({"message": "User found","data": user}); // Send the list of matching bloggers
-    } catch (err) {
+    } 
+    catch (err) {
       console.error(err);
       res.status(500).json({ message: 'Internal server error' });
     }
@@ -522,10 +522,8 @@ const LoginUserController = async (req, res) => {
   
       // Validate token using JWT verify
       try {
-        
         const decoded = jwt.verify(passwordResetToken,process.env.PASSWORD_RESET_TOKEN); // Replace "vinay" with your actual secret key
         const userId = decoded._id;
-  
         // Fetch user data using findOne()
         const user = await User.findById(userId);
         if (!user) {
@@ -626,7 +624,7 @@ const LoginUserController = async (req, res) => {
       if (!userToken) {
         return res.status(401).json({ message: "Please First login in your account" });
       }
-      const loggedInUser = await findLoggedInUser(usertoken);
+      const loggedInUser = await findLoggedInUser(userToken);
       if (!loggedInUser) {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -667,6 +665,7 @@ const LoginUserController = async (req, res) => {
   const BlockUserController = async (req, res, next) => {
     try {
       const userToken = req.params;
+      const { userId } = req.body;
       if (!userToken) {
         return res.status(401).json({ message: "Please First Login" });
       }
@@ -676,10 +675,7 @@ const LoginUserController = async (req, res) => {
       }
       if (loggedInUser.blocked) {
         return res.status(480).json({ message: "Your Account is blocked" });
-      }
-  
-      const { userId } = req.body;
-  
+      }  
       if (!userId) {
         return res.status(401).json({ message: "Missing user ID to block" });
       }

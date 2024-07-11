@@ -37,7 +37,7 @@ const RegisterBloggerController= async( req,res,next)=> {
         if(!passwordResetEmail){
           //we are going to delete the details of the Blogger and will show them message to regiseter later
           await Blogger.findOneAndDelete({_id: newBlogger._id});
-          return res.status(422).json({"message": "Unable to verify Email"})
+          return res.status(401).json({"message": "Unable to verify Email"})
         }
 
         const bloggerToken=  jwt.sign({_id: newBlogger._id},process.env.BLOGGER_TOKEN,{expiresIn: "3d"})

@@ -4,14 +4,14 @@ const { PostFestController,GetAllFestsController,GetUserPreferenceFestsControlle
 const router= express.Router();
 
 
-module.exports= router.get("/post",PostFestController)
+module.exports= router.get("/post/:userToken",PostFestController)
 module.exports= router.get("/detail/:pageNo", GetAllFestsController);
 module.exports= router.get("/specific/:festId", GetParticularFestController);
 module.exports= router.get("/byDate/:pageNo",GetFestsByDateController);
 module.exports= router.get("/userPref/:pageNo",GetUserPreferenceFestsController);
-module.exports= router.delete("/delete/:festId", DeleteFestController);
-module.exports= router.get("/byLocation/:pageNo",GetFestsByDateController);
-module.exports= router.put("/update/:festId",UpdateFestController);
-module.exports= router.get("/saved", SavedFestController);
-module.exports= router.put("/save/:festId", SaveFestController);
+module.exports= router.delete("/delete/:userToken/:festId", DeleteFestController);
+module.exports= router.get("/byLocation/:pageNo",GetFestsByLocationController);
+module.exports= router.put("/update/:userToken/:festId",UpdateFestController);
+module.exports= router.get("/saved/:userToken", SavedFestController);
+module.exports= router.put("/save/:userToken/:festId", SaveFestController);
 module.exports= router.get("/random/:pageNo",GetRandomFestsContoller);

@@ -227,7 +227,7 @@ const DeleteProjectController= async(req,res,next)=>{
       // 7. Update User's Projects (Efficient Update with Pull Operator)
       const updatedUser = await User.findByIdAndUpdate(userId, { $pull: { projects: projectId } }, { new: true }); // Efficient update with `pull`
       if (!updatedUser) {
-        return res.status(411).json({ message: "Failed to remove project from your projects" });
+        return res.status(404).json({ message: "Failed to remove project from your projects" });
       }
       return res.status(200).json({ message: "Project deleted successfully" });
     }
@@ -314,7 +314,6 @@ const GetProjectsController = async(req,res,next)=>{
     try{
         const userToken= req.params;
         const pageNo= req.params?.pageNo ?? 1;
-        const skipLength= (pageNo-1)*10;
         if(!userToken){
             return res.status(401).json({ message: "Unauthorized: Token not found" });
         }
