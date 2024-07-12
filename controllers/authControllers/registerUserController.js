@@ -15,7 +15,7 @@ const RegisterUserController = async (req, res) => {
     try {
         const { username, email,mobileNo } = req.body;
         if(username==undefined || email==undefined){
-          return res.status(404).json({"message": "Provide the email or username"})
+          return res.status(401).json({"message": "Provide the email or username"})
         }      
         const existingUser = await User.findOne({$or: [{username}, {email}]});
         if (existingUser) {
@@ -36,7 +36,7 @@ const RegisterUserController = async (req, res) => {
         if(!passwordResetEmail){
           // we are going to delete the user details as it may leads to the comflict when the user will try t reregister on the app
           await User.findOneAndDelete({_id: newUser._id});
-          return res.status(410).json({"message": "Unable to verify Email"})
+          return res.status(417).json({"message": "Unable to verify Email"})
         }
         // going to define the cookies for the again auto logging
         const userToken= jwt.sign({_id: newUser._id},process.env.USER_TOKEN, {expiresIn: "3d"});
@@ -65,7 +65,7 @@ const LoginUserController = async (req, res) => {
       } else if (req.body.username) {
         user = await User.findOne({ username: req.body.username });
       } else {
-        return res.status(401).json({ error: "Provide valid username or email" }); // Use 400 for bad request
+        return res.status(401).json({"message": "Provide valid username or email" }); // Use 400 for bad request
       }
       if (!user) {
         return res.status(404).json({"message": "User does not exists"})
@@ -73,7 +73,7 @@ const LoginUserController = async (req, res) => {
       if(!user.blocked){
         const match = await bcrypt.compare(req.body.password, user.password); // Compare hashed password
           if (!match) {
-            return res.status(403).json({"message": "Invalid Password"}) // Use 401 for incorrect password
+            return res.status(401).json({"message": "Invalid Password"}) // Use 401 for incorrect password
           }
       
           const userToken = jwt.sign({ _id: user._id },process.env.USER_TOKEN, { expiresIn: "3d" }); // Use env variable for secret
@@ -98,7 +98,7 @@ const LoginUserController = async (req, res) => {
           }
       }
       else{
-        return res.status(403).json({"message":"Your account has been blocked"})
+        return res.status(451).json({"message":"Your account has been blocked"})
       }
     } catch (err) {
       console.error(err); // Log the error for debugging
