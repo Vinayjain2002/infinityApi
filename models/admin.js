@@ -7,7 +7,7 @@ const adminSchema= mongoose.Schema({
     },
     adminname: {
         type: String,
-        trim: true,
+        trim: tr-ue,
         required: true,
         lowercase: true,
         unique: true

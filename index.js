@@ -22,7 +22,7 @@ app.use(errorHandling);
 app.use(cookieParser())
 app.use(cors());
 app.use("/api/infinity/auth", authRouter);
-app.use("/api/infinity/",createAdminRouter);
+app.use("/api/infinity/auth/admin",createAdminRouter);
 app.use("/api/infinity/project", projectRouter);
 app.use("/api/infinity/fest",festRouter )
 app.use("/api/infinity/bootcamp", bootcampRouter);

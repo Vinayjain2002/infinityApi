@@ -14,13 +14,10 @@ const LoginAsAdminController = async (req, res, next) => {
       }
       const adminUser = await Admin.findOne({ "adminemail":adminemail }); // Assuming email is used for login
       if (!adminUser || adminUser.deletedAdminAccount) {
-        return res.status(404).json({ message: "Email not found" }); // More specific error
-      }
-      if(!adminpassword){
-        return res.status(401).json({"message": "Password not found"})
+        return res.status(404).json({ message: "Admin not found" }); // More specific error
       }
       if(!adminUser.approvedadmin){
-        return res.status(410).json({
+        return res.status(409).json({
           "message": "You are not a admin"
         })
       }
@@ -45,7 +42,7 @@ const LoginAsAdminController = async (req, res, next) => {
         return  res.status(200).json({"message": "Admin Login Successfully", "adminToken": adminToken})
       }
       else{
-        return  res.status(201).json({"message": "Admin Login Successfully", "adminToken": adminToken})
+        return  res.status(200).json({"message": "Admin Login Successfully", "adminToken": adminToken})
 
       }
     } catch (err) {

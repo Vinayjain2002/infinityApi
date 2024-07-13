@@ -36,7 +36,7 @@ const RegisterUserController = async (req, res) => {
         if(!passwordResetEmail){
           // we are going to delete the user details as it may leads to the comflict when the user will try t reregister on the app
           await User.findOneAndDelete({_id: newUser._id});
-          return res.status(417).json({"message": "Unable to verify Email"})
+          return res.status(410).json({"message": "Unable to verify Email"})
         }
         // going to define the cookies for the again auto logging
         const userToken= jwt.sign({_id: newUser._id},process.env.USER_TOKEN, {expiresIn: "3d"});
@@ -46,7 +46,7 @@ const RegisterUserController = async (req, res) => {
           return res.status(200).json({"message":"Welcome Email Send and user Created Succesfully", "userToken": userToken})
         }
         else{
-          return res.status(201).json({"message": ""})
+          return res.status(200).json({"message": "Welcome Email not Send and user Created Successfully", "userToken": userToken})
         }
     } catch (err) {
         console.error(err); // Log the error for debugging
